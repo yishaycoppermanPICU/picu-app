@@ -349,7 +349,7 @@ MEDICAL_DB = {
 # מיזוג מאגרי התוכן למבנה אחיד
 FULL_DB = {**MEDICAL_DB}
 if 'DRUGS_DB' in globals():
-    drugs_topics = DRUGS_DB.get("topics", DRUGS_DB) if isinstance(DRUGS_DB, dict) else {}
+    drugs_topics = DRUGS_DB if isinstance(DRUGS_DB, dict) else {}
     FULL_DB["💊 תרופות ופרמקולוגיה"] = {
         "icon": "💊",
         "description": "מאגר תרופות ופרמקולוגיה.",
@@ -491,7 +491,6 @@ elif st.session_state.page == "learn":
     st.title("ספרייה מקצועית")
     # מיזוג שני ה-DB
     cats = list(FULL_DB.keys())
-    if 'DRUGS_DB' in globals() and "💊 תרופות ופרמקולוגיה" not in cats: cats.append("💊 תרופות ופרמקולוגיה") # אם השתמשנו בזה בנפרד
     
     idx = 0
     if st.session_state.get('cat_filter') in cats: idx = cats.index(st.session_state.cat_filter)
@@ -499,8 +498,6 @@ elif st.session_state.page == "learn":
     
     # בדיקה איפה הדאטה נמצא
     data_source = FULL_DB
-    if cat == "💊 תרופות ופרמקולוגיה" and cat in FULL_DB:
-        data_source = {cat: FULL_DB[cat]} # תיקון למיזוג
     
     if "תרופות" in cat:
         drugs = sorted(data_source[cat]['topics'].keys())
