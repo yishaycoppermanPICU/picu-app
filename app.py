@@ -349,10 +349,11 @@ MEDICAL_DB = {
 # מיזוג מאגרי התוכן למבנה אחיד
 FULL_DB = {**MEDICAL_DB}
 if 'DRUGS_DB' in globals():
+    drugs_topics = DRUGS_DB.get("topics", DRUGS_DB) if isinstance(DRUGS_DB, dict) else {}
     FULL_DB["💊 תרופות ופרמקולוגיה"] = {
         "icon": "💊",
         "description": "מאגר תרופות ופרמקולוגיה.",
-        "topics": DRUGS_DB
+        "topics": drugs_topics
     }
 # ==============================================================================
 # חלק 5: מאגר שאלות + מחשבונים
@@ -605,7 +606,7 @@ elif st.session_state.page == "admin":
             file_content = raw.decode("utf-8", errors="replace")
     
     if st.button("טען לתצוגה"):
-        content = pasted.strip() or file_content
+        content = file_content.strip() or pasted.strip()
         if content:
             st.session_state["admin_preview"] = content
             st.success("קיבלתי את התוכן. תצוגה מקדימה מופיעה למטה.")
