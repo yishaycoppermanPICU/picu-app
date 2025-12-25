@@ -1,68 +1,142 @@
-:root{
-  --accent:#0d47a1;
-  --muted:#546e7a;
-  --card-bg: #ffffff;
+/*
+  assets/custom.css
+  Strengthened RTL CSS and layout adjustments
+  Commit: style: strengthen RTL CSS and layout adjustments
+*/
+
+/* ---------- Base: prefer logical properties ---------- */
+:root {
+  --gap-sm: 0.5rem;
+  --gap-md: 1rem;
+  --gap-lg: 1.5rem;
 }
 
-/* בסיס RTL לכל הדף */
-html, body, .stApp {
-  direction: rtl !important;
-  unicode-bidi: embed;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+/* Use logical properties where possible so LTR/RTL works automatically */
+.container, .page, .panel {
+  margin-inline: auto;
+  padding-inline: var(--gap-md);
 }
 
-/* מכולת התוכן */
-.main .block-container {
-  padding-left: 2rem !important;
-  padding-right: 2rem !important;
+.header, .footer, .navbar, .toolbar {
+  padding-block: 0.75rem;
+  padding-inline: var(--gap-md);
 }
 
-/* כרטיסים אחידים */
-.card {
-  background: linear-gradient(180deg, #fff 0%, #f7fbff 100%);
-  border-radius: 10px;
-  padding: 16px;
-  box-shadow: 0 6px 18px rgba(12,40,64,0.06);
-  margin-bottom: 14px;
-  border-right: 6px solid var(--accent);
+/* Text alignment: prefer start/end to respect direction */
+.text-start { text-align: start; }
+.text-end { text-align: end; }
+
+/* Buttons: keep icons and text ordering natural across directions */
+.btn .btn-icon { margin-inline-end: 0.5rem; }
+:dir(rtl) .btn .btn-icon { margin-inline-end: 0; margin-inline-start: 0.5rem; }
+
+/* Breadcrumbs and navigation spacing */
+.breadcrumb {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding-block: 0.25rem;
+  padding-inline-start: 0; /* allow list-style spacing to control */
 }
 
-/* כפתור Google מותאם */
-.google-btn{
-  display:inline-block;
-  background: #fff;
-  color: #222;
-  border: 1px solid #dcdcdc;
-  padding: 8px 12px;
-  border-radius: 8px;
-  text-decoration:none;
-  font-weight:700;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+/* Fallback float utilities for projects not using logical float utilities */
+.float-start { float: left !important; }
+.float-end { float: right !important; }
+:dir(rtl) .float-start { float: right !important; }
+:dir(rtl) .float-end { float: left !important; }
+
+/* Icon flipping utilities: apply .rtl-flip to icons that should mirror in RTL */
+.icon, .svg-icon { display: inline-block; vertical-align: middle; }
+.rtl-flip { transition: transform .15s ease-in-out; }
+:dir(rtl) .rtl-flip { transform: scaleX(-1); }
+
+/* Specific common icons that should flip (chevrons, arrows) */
+:dir(rtl) .icon-chevron, :dir(rtl) .icon-arrow-left { transform: scaleX(-1); }
+
+/* Form controls: align labels and inputs using logical properties */
+.form-row { display: flex; gap: var(--gap-md); align-items: center; }
+.form-label { min-width: 10rem; text-align: start; }
+:dir(rtl) .form-label { text-align: start; }
+.form-control { flex: 1 1 auto; }
+
+/* Inputs and placeholders: ensure placeholder text aligns with writing mode */
+input[type="text"], textarea, select {
+  padding-inline: .5rem;
+  padding-block: .4rem;
+  text-align: start;
 }
 
-/* כפתורים ושדות */
-button.stButton>button, .stButton>button {
-  text-align: center;
+:dir(rtl) input[type="text"], :dir(rtl) textarea, :dir(rtl) select {
+  text-align: start; /* start maps to right in RTL */
 }
 
-/* תיקון ל‑RTL בעמודות */
-[data-testid="stVerticalBlock"] > div[role="figure"], .stColumns {
-  direction: rtl;
+/* Search input with icon inside - use logical positioning */
+.input-icon { position: relative; }
+.input-icon .icon { position: absolute; top: 50%; transform: translateY(-50%); inset-inline-start: .6rem; }
+:dir(rtl) .input-icon .icon { inset-inline-start: auto; inset-inline-end: .6rem; }
+.input-icon input { padding-inline-start: 2rem; }
+:dir(rtl) .input-icon input { padding-inline-end: 2rem; padding-inline-start: .6rem; }
+
+/* Cards / panels: mirror left/right content spacing in RTL */
+.card { padding-block: 1rem; padding-inline: 1rem; border-radius: 6px; }
+.card .meta { margin-block-start: .5rem; }
+
+/* Tables: keep cell padding logical and flip directional icons */
+table { width: 100%; border-collapse: collapse; }
+table th, table td { padding-block: .6rem; padding-inline: .75rem; }
+:dir(rtl) table th, :dir(rtl) table td { text-align: start; }
+
+/* Sidebars and layout columns: use logical order where possible */
+.layout { display: grid; grid-template-columns: 1fr minmax(220px, 320px); gap: var(--gap-lg); }
+:dir(rtl) .layout { /* ensure visual order is consistent; swap columns for RTL if necessary */
+  grid-template-columns: minmax(220px, 320px) 1fr;
 }
 
-/* יישור טקסט לימין (עברית) */
-p, h1, h2, h3, h4, span, label, div {
-  text-align: right !important;
+/* Modal dialogs: align close button and content properly */
+.modal .modal-header { display: flex; align-items: center; justify-content: space-between; gap: var(--gap-md); }
+.modal .close { margin-inline-start: 0; margin-inline-end: 0; }
+:dir(rtl) .modal .close { /* flip placement for close button */
+  order: -1; margin-inline-start: 0; margin-inline-end: 0;
 }
 
-/* קלטים בכיוון RTL */
-input[type="text"], textarea, .stTextInput>div>input {
-  direction: rtl;
-  text-align: right;
+/* Tooltips and popovers: ensure caret positioning respects direction */
+.popover, .tooltip { direction: ltr; /* keep internal positioning predictable */ }
+:dir(rtl) .popover[data-popper-placement^="left"] { transform-origin: right center; }
+
+/* Progress bars: logical width, keep label aligned */
+.progress { height: 1rem; background: rgba(0,0,0,0.06); border-radius: .5rem; overflow: hidden; }
+.progress .bar { height: 100%; width: 0%; background: var(--accent, #2b8aef); transition: width .3s ease; }
+.progress .label { position: absolute; inset-block-start: 0; inset-inline-start: .5rem; color: #fff; font-size: .75rem; }
+:dir(rtl) .progress .label { inset-inline-start: auto; inset-inline-end: .5rem; }
+
+/* Avatar and user lists: keep avatar on start side */
+.user-item { display: flex; align-items: center; gap: .75rem; }
+.user-item .avatar { order: 0; }
+:dir(rtl) .user-item .avatar { order: 0; }
+.user-item .meta { flex: 1; }
+
+/* Small utilities for margins/gaps that respect direction */
+.ml-1 { margin-left: .5rem; }
+.mr-1 { margin-right: .5rem; }
+:dir(rtl) .ml-1 { margin-right: .5rem; margin-left: 0; }
+:dir(rtl) .mr-1 { margin-left: .5rem; margin-right: 0; }
+
+/* Fixes for specific libraries that don't flip in RTL (common cases) */
+/* Example: a library that uses .dropdown-menu { left: 0 } */
+.dropdown-menu { inset-inline-start: 0; inset-inline-end: auto; }
+:dir(rtl) .dropdown-menu { inset-inline-start: auto; inset-inline-end: 0; }
+
+/* Ensure scrollbars and overflow still feel natural in RTL contexts */
+:dir(rtl) .horizontal-scroll { direction: rtl; }
+:dir(rtl) .horizontal-scroll > * { direction: ltr; }
+
+/* Accessibility: ensure focus outlines are visible irrespective of direction */
+:focus { outline: 3px solid rgba(43,138,239,0.35); outline-offset: 2px; }
+
+/* Specific adjustments for small screens */
+@media (max-width: 768px) {
+  .layout { grid-template-columns: 1fr; }
+  :dir(rtl) .input-icon .icon { inset-inline-end: .4rem; }
 }
 
-/* רספונסיביות */
-@media (max-width: 800px){
-  .card { padding: 12px; }
-  .block-container { padding-left: 12px !important; padding-right: 12px !important; }
-}
+/* End of file */
