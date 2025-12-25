@@ -86,7 +86,7 @@ def build_auth_url(client_id, redirect_uri, state=None):
     if state:
         params['state'] = state
     # build query safely
-    qs = '&'.join([f"{k}={requests.utils.quote(str(v), safe='')" for k, v in params.items()])
+    qs = '&'.join([f"{k}={requests.utils.quote(str(v), safe='')}" for k, v in params.items()])
     return f"{base}?{qs}"
 
 # Verify id_token using Google's tokeninfo endpoint
