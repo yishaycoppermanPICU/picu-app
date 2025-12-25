@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+:root{
+  --primary:#0d47a1;
+  --accent:#1565c0;
+  --muted:#607d8b;
+}
+body, .css-1d391kg { font-family: 'Inter', sans-serif; }
+.card {
+  background: linear-gradient(180deg,#fff,#f6fbff);
+  border-radius:10px;
+  padding:18px;
+  box-shadow: 0 6px 18px rgba(14,30,37,0.08);
+  margin-bottom:14px;
+}
+.btn-primary {
+  background: linear-gradient(90deg,var(--primary),var(--accent));
+  color: white !important;
+  padding: 8px 14px;
+  border-radius:8px;
+  font-weight:700;
+}
+
+/* small responsive tweaks */
+@media (max-width: 600px) {
+  .card { padding:12px; }
+}
