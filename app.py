@@ -444,3 +444,21 @@ if st.checkbox('הצג כלי שאלות מתקדמים'):
 
 st.markdown('\n\n---\n\n')
 st.info('לסקירה: אם תרצה, אני יכול להמשיך ולחבר Firebase Sign-In ולעשות עיצ[TRUNC]')
+# היכנס לתיקיית הפרויקט (אם לא שם כבר)
+cd /path/to/picu-app
+
+# בדוק שיש עבודה נקייה
+git status
+
+# החלת ה-patch
+git apply fix-query-params-and-auth.patch
+
+# בדוק שהשינויים חלו
+git diff --staged || git diff
+
+# הוסף ושמור commit
+git add app.py
+git commit -m "fix: use st.query_params/st.set_query_params and correct auth URL build"
+
+# דחיפת שינויים ל־main
+git push origin main
