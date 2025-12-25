@@ -74,7 +74,15 @@ st.markdown("""
     .stTabs [data-baseweb="tab-list"] { justify-content: flex-end; }
     .stTabs [data-baseweb="tab"] { font-family: 'Assistant'; font-weight: 600; }
     div[data-testid="stMetricValue"] { direction: ltr; } /* מספרים במדדים */
-    
+# --- קוד בדיקה זמני ---
+st.write("🔍 Debug Secrets:")
+if "google" in st.secrets:
+    st.write("✅ Google section found!")
+    st.write("Keys inside google:", st.secrets["google"].keys())
+else:
+    st.error("❌ Google section is MISSING from secrets!")
+    st.write("Available sections:", st.secrets.keys())
+# ----------------------    
     /* כפתור גוגל */
     iframe[title="Sign in with Google"] { margin: 0 auto; display: block; }
     </style>
