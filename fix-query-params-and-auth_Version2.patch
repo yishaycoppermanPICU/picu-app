@@ -1,0 +1,33 @@
+*** Begin Patch
+*** Update File: app.py
+@@
+-# Detect if redirected back with code (and optional state)
+-query_params = st.experimental_get_query_params()
++# Detect if redirected back with code (and optional state)
++query_params = st.query_params
+@@
+-    if not (client_id and client_secret and redirect_uri):
+-        st.error('חסרים פרטי Google OAuth (client_id / client_secret /redirect_uri). בדוק את ההגדרות.')
+-        # clear query params to avoid loops
+-        st.experimental_set_query_params()
++    if not (client_id and client_secret and redirect_uri):
++        st.error('חסרים פרטי Google OAuth (client_id / client_secret /redirect_uri). בדוק את ההגדרות.')
++        # clear query params to avoid loops
++        st.set_query_params()
+@@
+-        if not expected_state:
+-            st.error('Missing expected OAuth state (session expired?). הבקשה נדחתה.')
+-            st.experimental_set_query_params()
++        if not expected_state:
++            st.error('Missing expected OAuth state (session expired?). הבקשה נדחתה.')
++            st.set_query_params()
+@@
+-        elif returned_state != expected_state:
+-            st.error('Mismatch in OAuth state parameter. הבקשה נדחתה (state לא תואם).')
+-            # clear params to avoid loops
+-            st.experimental_set_query_params()
++        elif returned_state != expected_state:
++            st.error('Mismatch in OAuth state parameter. הבקשה נדחתה (state לא תואם).')
++            # clear params to avoid loops
++            st.set_query_params()
+*** End Patch
