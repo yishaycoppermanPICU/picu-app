@@ -115,7 +115,7 @@ def render_clean_html(text, sanitize=False):
     if not text: return ""
     if sanitize:
         text = html.escape(text)
-    html_text = text.replace("\n", "<br>")
+    html_text = text.replace("\\n", "<br>")
     lines = html_text.split("<br>")
     formatted = []
     in_list = False
@@ -157,7 +157,7 @@ def render_clean_html(text, sanitize=False):
         
         formatted.append(cl)
     if in_list: formatted.append("</ul>")
-    return '\n'.join(formatted)
+    return '\\n'.join(formatted)
 
 # ==================================================================================================
 # חלק 2: פונקציות למבחנים ושאלות
@@ -246,7 +246,7 @@ with st.sidebar:
         auth_url = build_auth_url(client_id, redirect_uri, state=st.session_state['oauth_state'])
         # show link - open in same tab using styled anchor
         st.markdown(f"<a class='google-btn' href='{auth_url}' target='_self'>התחבר עם Google</a>", unsafe_allow_html=True)
-        st.caption('הקישור יפתח חלון חדש ויחזיר אותך חזרה ליישום לאחר התחברות.')
+        st.caption('הקישור יפתח באותו טאב ויחזיר אותך חזרה ליישום לאחר התחברות.')
     else:
         st.info('לא ניתן לבנות לינק התחברות - הוסף את GOOGLE_CLIENT_ID ו-GOOGLE_REDIRECT_URI ל-st.secrets או ל-env')
 
@@ -443,7 +443,4 @@ if st.checkbox('הצג כלי שאלות מתקדמים'):
             st.error(f'שגיאה בקריאת הקובץ: {e}')
 
 st.markdown('\n\n---\n\n')
-st.info('לסקירה: אם תרצה, אני יכול להמשיך ולחבר Firebase Sign-In ולעשות עיצוב נוסף.')
-
-# Footer
-st.markdown("<div style='margin-top:30px; color:#546e7a;'>נוצר על ידי צוות PICU Pro — שיפורים אוטומטיים: איסוף אימיילים, UI משופר, כלי ניהול ושאלות.</div>", unsafe_allow_html=True)
+st.info('לסקירה: אם תרצה, אני יכול להמשיך ולחבר Firebase Sign-In ולעשות עיצ[TRUNC]')
