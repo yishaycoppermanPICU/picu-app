@@ -1,6 +1,7 @@
 import streamlit as st
 import random
 import time
+import html
 from datetime import datetime
 
 # ==============================================================================
@@ -15,8 +16,10 @@ st.set_page_config(
 )
 
 # --- מנוע רינדור HTML חכם (מונע שבירת שורות) ---
-def render_clean_html(text):
+def render_clean_html(text, sanitize=False):
     if not text: return ""
+    if sanitize:
+        text = html.escape(text)
     html = text.replace("\n", "<br>")
     lines = html.split("<br>")
     formatted = []
@@ -343,6 +346,14 @@ MEDICAL_DB = {
         }
     }
 }
+# מיזוג מאגרי התוכן למבנה אחיד
+FULL_DB = {**MEDICAL_DB}
+drugs_topics = DRUGS_DB if isinstance(DRUGS_DB, dict) else {}
+FULL_DB["💊 תרופות ופרמקולוגיה"] = {
+    "icon": "💊",
+    "description": "מאגר תרופות ופרמקולוגיה.",
+    "topics": drugs_topics
+}
 # ==============================================================================
 # חלק 5: מאגר שאלות + מחשבונים
 # ==============================================================================
@@ -479,7 +490,6 @@ elif st.session_state.page == "learn":
     st.title("ספרייה מקצועית")
     # מיזוג שני ה-DB
     cats = list(FULL_DB.keys())
-    if 'DRUGS_DB' in globals(): cats.append("💊 תרופות ופרמקולוגיה") # אם השתמשנו בזה בנפרד
     
     idx = 0
     if st.session_state.get('cat_filter') in cats: idx = cats.index(st.session_state.cat_filter)
@@ -487,8 +497,6 @@ elif st.session_state.page == "learn":
     
     # בדיקה איפה הדאטה נמצא
     data_source = FULL_DB
-    if cat == "💊 תרופות ופרמקולוגיה" and 'DRUGS_DB' in globals():
-        data_source = {"💊 תרופות ופרמקולוגיה": DRUGS_DB["💊 תרופות ופרמקולוגיה"]} # תיקון למיזוג
     
     if "תרופות" in cat:
         drugs = sorted(data_source[cat]['topics'].keys())
@@ -580,5 +588,35 @@ elif st.session_state.page == "quiz":
 
 elif st.session_state.page == "admin":
     st.title("ניהול")
-    st.info("כאן יהיה עורך התוכן.")
+    st.info("ניתן להדביק כאן טקסט או להעלות קובץ תוכן (txt/md) ואסדר אותו בדף בהתאם.")
+    uploaded = st.file_uploader("העלה קובץ טקסט/Markdown", type=["txt", "md"])
+    pasted = st.text_area("או הדבק כאן טקסט חופשי")
     
+    file_content = ""
+    if uploaded:
+        raw = uploaded.getvalue()
+        max_bytes = 2_000_000  # ~2MB
+        if len(raw) > max_bytes:
+            st.warning("קובץ גדול מדי (מעל 2MB). העלה קובץ קטן יותר.")
+        else:
+            try:
+                file_content = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                st.warning("לא ניתן לפענח את הקובץ ב-UTF-8, מוצג עם החלפת תווים בעייתיים.")
+                file_content = raw.decode("utf-8", errors="replace")
+    
+    file_clean = file_content.strip()
+    pasted_clean = pasted.strip()
+    if st.button("טען לתצוגה"):
+        if file_clean and pasted_clean:
+            st.info("הקובץ שהועלה מקבל עדיפות על הטקסט המודבק.")
+        content = file_clean or pasted_clean
+        if content:
+            st.session_state["admin_preview"] = content
+            st.success("קיבלתי את התוכן. תצוגה מקדימה מופיעה למטה.")
+        else:
+            st.warning("יש להדביק טקסט או לבחור קובץ.")
+    
+    if st.session_state.get("admin_preview"):
+        st.subheader("תצוגה מקדימה")
+        st.markdown(render_clean_html(st.session_state["admin_preview"], sanitize=True), unsafe_allow_html=True)
