@@ -1,6 +1,7 @@
 import streamlit as st
 import random
 import time
+import html
 from datetime import datetime
 
 # ==============================================================================
@@ -594,7 +595,7 @@ elif st.session_state.page == "admin":
     
     file_content = ""
     if uploaded:
-        file_content = uploaded.getvalue().decode("utf-8", errors="ignore")
+        file_content = uploaded.getvalue().decode("utf-8", errors="replace")
     
     if st.button("טען לתצוגה"):
         content = pasted.strip() or file_content
@@ -606,4 +607,5 @@ elif st.session_state.page == "admin":
     
     if st.session_state.get("admin_preview"):
         st.subheader("תצוגה מקדימה")
-        st.markdown(render_clean_html(st.session_state["admin_preview"]), unsafe_allow_html=True)
+        safe_content = html.escape(st.session_state["admin_preview"])
+        st.markdown(render_clean_html(safe_content), unsafe_allow_html=True)
