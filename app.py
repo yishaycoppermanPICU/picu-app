@@ -16,8 +16,10 @@ st.set_page_config(
 )
 
 # --- מנוע רינדור HTML חכם (מונע שבירת שורות) ---
-def render_clean_html(text):
+def render_clean_html(text, sanitize=False):
     if not text: return ""
+    if sanitize:
+        text = html.escape(text)
     html = text.replace("\n", "<br>")
     lines = html.split("<br>")
     formatted = []
@@ -595,7 +597,12 @@ elif st.session_state.page == "admin":
     
     file_content = ""
     if uploaded:
-        file_content = uploaded.getvalue().decode("utf-8", errors="replace")
+        raw = uploaded.getvalue()
+        try:
+            file_content = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            st.warning("לא ניתן לפענח את הקובץ ב-UTF-8, מוצג עם החלפת תווים בעייתיים.")
+            file_content = raw.decode("utf-8", errors="replace")
     
     if st.button("טען לתצוגה"):
         content = pasted.strip() or file_content
@@ -607,5 +614,4 @@ elif st.session_state.page == "admin":
     
     if st.session_state.get("admin_preview"):
         st.subheader("תצוגה מקדימה")
-        safe_content = html.escape(st.session_state["admin_preview"])
-        st.markdown(render_clean_html(safe_content), unsafe_allow_html=True)
+        st.markdown(render_clean_html(st.session_state["admin_preview"], sanitize=True), unsafe_allow_html=True)
