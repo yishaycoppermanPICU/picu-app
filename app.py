@@ -1007,4 +1007,4 @@ elif st.session_state.current_page == "Admin":
         if st.session_state.get('quiz_active'):
             score = 0
             with st.form("quiz_form"):
-                for i, q in enumerate(st
+                for i, q in enumerate(st)
