@@ -348,13 +348,12 @@ MEDICAL_DB = {
 }
 # מיזוג מאגרי התוכן למבנה אחיד
 FULL_DB = {**MEDICAL_DB}
-if 'DRUGS_DB' in globals():
-    drugs_topics = DRUGS_DB if isinstance(DRUGS_DB, dict) else {}
-    FULL_DB["💊 תרופות ופרמקולוגיה"] = {
-        "icon": "💊",
-        "description": "מאגר תרופות ופרמקולוגיה.",
-        "topics": drugs_topics
-    }
+drugs_topics = DRUGS_DB if isinstance(DRUGS_DB, dict) else {}
+FULL_DB["💊 תרופות ופרמקולוגיה"] = {
+    "icon": "💊",
+    "description": "מאגר תרופות ופרמקולוגיה.",
+    "topics": drugs_topics
+}
 # ==============================================================================
 # חלק 5: מאגר שאלות + מחשבונים
 # ==============================================================================
@@ -596,13 +595,19 @@ elif st.session_state.page == "admin":
     file_content = ""
     if uploaded:
         raw = uploaded.getvalue()
-        try:
-            file_content = raw.decode("utf-8")
-        except UnicodeDecodeError:
-            st.warning("לא ניתן לפענח את הקובץ ב-UTF-8, מוצג עם החלפת תווים בעייתיים.")
-            file_content = raw.decode("utf-8", errors="replace")
+        max_bytes = 2_000_000  # ~2MB
+        if len(raw) > max_bytes:
+            st.warning("קובץ גדול מדי (מעל 2MB). העלה קובץ קטן יותר.")
+        else:
+            try:
+                file_content = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                st.warning("לא ניתן לפענח את הקובץ ב-UTF-8, מוצג עם החלפת תווים בעייתיים.")
+                file_content = raw.decode("utf-8", errors="replace")
     
     if st.button("טען לתצוגה"):
+        if file_content.strip() and pasted.strip():
+            st.info("הקובץ שהועלה מקבל עדיפות על הטקסט המודבק.")
         content = file_content.strip() or pasted.strip()
         if content:
             st.session_state["admin_preview"] = content
