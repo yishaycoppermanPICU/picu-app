@@ -6,10 +6,10 @@ import time
 import json
 import os
 
-# --- הגדרת קובץ הנתונים (ה"דאטה-בייס" שלך) ---
+# --- הגדרת קובץ הנתונים ---
 DB_FILE = "content_db.json"
 
-# --- תוכן התחלתי (ברירת מחדל אם הקובץ לא קיים) ---
+# --- תוכן התחלתי ---
 DEFAULT_CONTENT = {
     "מצבי שוק (Shock)": {
         "שוק היפוולמי": {
@@ -22,18 +22,6 @@ DEFAULT_CONTENT = {
 * גפיים קרות
 
 **טיפול:** בולוס נוזלים 20 מ"ל/ק"ג.""",
-            "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Capillary_refill.gif/220px-Capillary_refill.gif",
-            "video": ""
-        },
-        "שוק ספטי": {
-            "text": "### שוק ספטי\nזיהום + SIRS. דורש אנטיביוטיקה מהירה ונוזלים.",
-            "image": "",
-            "video": "https://www.youtube.com/watch?v=5j0zDoY8fBc"
-        }
-    },
-    "תרופות והחייאה": {
-        "אדרנלין": {
-            "text": "**מינון החייאה:** 0.01 מ\"ג/ק\"ג (1:10,000).",
             "image": "",
             "video": ""
         }
@@ -42,7 +30,6 @@ DEFAULT_CONTENT = {
 
 # --- פונקציות לניהול הדאטה ---
 def load_data():
-    """טוען את התוכן מהקובץ. אם לא קיים, יוצר חדש."""
     if not os.path.exists(DB_FILE):
         with open(DB_FILE, 'w', encoding='utf-8') as f:
             json.dump(DEFAULT_CONTENT, f, ensure_ascii=False, indent=4)
@@ -52,65 +39,93 @@ def load_data():
             return json.load(f)
 
 def save_data(data):
-    """שומר את התוכן לקובץ."""
     with open(DB_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-# --- הגדרת עמוד ועיצוב ---
+# --- הגדרת עמוד ---
 st.set_page_config(
-    page_title="אֲחָיוּת - טיפול נמרץ ילדים",
+    page_title="אֲחָיוּת - עם ישי קופרמן",
     page_icon="🏥",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- CSS לעיצוב RTL, כרטיסיות ותמונות ---
+# --- CSS מתוקן ליישור לימין ועיצוב ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;700&display=swap');
     
-    html, body, [class*="css"] {
+    /* הגדרות גלובליות לכל האלמנטים */
+    html, body, .stApp {
         font-family: 'Rubik', sans-serif;
         direction: rtl;
         text-align: right;
     }
+
+    /* יישור כותרות */
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Rubik', sans-serif;
+        text-align: right !important;
+        direction: rtl !important;
+        color: #0056b3;
+    }
+
+    /* יישור טקסט רגיל ורשימות - התיקון הקריטי */
+    .stMarkdown, p, div, span {
+        text-align: right !important;
+        direction: rtl !important;
+    }
     
-    .stApp { background-color: #f8f9fa; }
-    h1, h2, h3 { color: #0056b3; font-weight: 700; }
-    
+    /* תיקון ספציפי לרשימות (בולטים) שבורחים לשמאל */
+    ul {
+        direction: rtl !important;
+        text-align: right !important;
+        padding-right: 20px !important; /* הזחה מימין */
+        margin-left: auto !important;
+        margin-right: 0 !important;
+    }
+    li {
+        direction: rtl !important;
+        text-align: right !important;
+        list-style-position: inside; /* מכניס את הנקודה לתוך השורה */
+    }
+
     /* כרטיסיות */
     .content-card {
         background-color: white;
         padding: 25px;
         border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         margin-bottom: 20px;
         border-right: 5px solid #0056b3;
+        text-align: right;
     }
     
-    /* התאמות לנגן וידאו ותמונות */
-    .stVideo, .stImage {
-        border-radius: 10px;
-        overflow: hidden;
-        margin-top: 15px;
-        margin-bottom: 15px;
+    /* תיקון עמודות */
+    div[data-testid="column"] {
+        text-align: right !important;
+        direction: rtl !important;
     }
 
-    /* כפתורים וטפסים לימין */
+    /* כפתורים וטפסים */
     .stButton button { width: 100%; border-radius: 8px; font-weight: bold; }
     .stTextInput input, .stTextArea textarea, .stSelectbox div { direction: rtl; text-align: right; }
-    .stSidebar { direction: rtl; text-align: right; }
+    
+    /* הסתרת כפתורי ניהול של סטרימליט למראה נקי */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    
 </style>
 """, unsafe_allow_html=True)
 
-# --- טעינת נתונים לזיכרון ---
+# --- טעינת נתונים ---
 if 'content_db' not in st.session_state:
     st.session_state.content_db = load_data()
 if 'user_info' not in st.session_state: st.session_state.user_info = {}
 
-# --- סרגל צד (התחברות ותפריט) ---
+# --- סרגל צד ---
 with st.sidebar:
-    st.title("🏥 אֲחָיוּת")
+    st.title("🏥 פרופיל")
     
     if not st.session_state.user_info:
         with st.form("login"):
@@ -122,156 +137,129 @@ with st.sidebar:
                     st.session_state.user_info = {"name": name, "email": email}
                     st.rerun()
     else:
-        st.success(f"מחובר: {st.session_state.user_info['name']}")
+        st.success(f"שלום, {st.session_state.user_info['name']}")
         if st.button("יציאה"):
             st.session_state.user_info = {}
             st.rerun()
             
     st.markdown("---")
-    menu = st.radio("תפריט:", ["🏠 דף הבית", "📚 חומר לימוד", "⚙️ ניהול תוכן (CMS)"])
+    menu = st.radio("תפריט:", ["🏠 דף הבית", "📚 חומר לימוד", "⚙️ ניהול תוכן"])
 
 # --- לוגיקה ראשית ---
 
 # 1. דף הבית
 if menu == "🏠 דף הבית":
-    st.title("מרכז ידע - טיפול נמרץ ילדים")
+    # הכותרת הראשית כפי שביקשת
+    st.title("אֲחָיוּת - עם ישי קופרמן")
+    
+    # כותרת המשנה
+    st.header("טיפול נמרץ ילדים - PICU")
+    
+    st.markdown("---")
+    
     st.markdown("""
     <div class="content-card">
-    ברוכים הבאים. המערכת מאפשרת למידה דינמית ועדכון נהלים בזמן אמת.
+    <strong>ברוכים הבאים למערכת הלמידה.</strong><br>
+    מערכת זו מבוססת על הפרוטוקולים העדכניים של המחלקה.<br><br>
+    <strong>מה במערכת?</strong>
+    <ul>
+        <li>📚 <strong>חומר עיוני:</strong> סיכומים על תרופות, החייאה, ספסיס וטראומה.</li>
+        <li>📝 <strong>מבחנים:</strong> שאלות אמריקאיות לתרגול ידע עם הסברים מפורטים.</li>
+        <li>🏆 <strong>תחרות:</strong> צבירת נקודות והשוואה בין מחלקות.</li>
+    </ul>
     </div>
     """, unsafe_allow_html=True)
+    
+    # עמודות לטיפים - ב-RTL עמודה 1 היא הימנית
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.info("💡 **טיפ יומי:** בהחייאה, אם יש היפרקלמיה, תן קלציום גלוקונט להגנה על הלב לפני מתן אינסולין.")
+    
+    with col2:
+        st.warning("⚠️ **שים לב:** המינון לאדרנלין בהחייאה הוא 0.01 מ\"ג לק\"ג (ולא 0.1!).")
 
-# 2. חומר לימוד (תצוגה)
+# 2. חומר לימוד
 elif menu == "📚 חומר לימוד":
-    st.title("📚 הספרייה המקצועית")
+    st.title("אֲחָיוּת - עם ישי קופרמן")
+    st.subheader("טיפול נמרץ ילדים - PICU")
+    st.markdown("---")
     
-    # שליפת המידע מה-DB
     db = st.session_state.content_db
-    
-    # בחירת נושא ראשי
     main_topics = list(db.keys())
+    
     if not main_topics:
-        st.warning("עדיין אין תוכן במערכת. לך ל'ניהול תוכן' כדי להוסיף.")
+        st.warning("אין תוכן. יש להוסיף בניהול.")
     else:
-        selected_main = st.selectbox("בחר נושא ראשי:", main_topics)
+        col_nav, col_content = st.columns([1, 3])
         
-        # בחירת תת-נושא
-        sub_topics = list(db[selected_main].keys())
-        selected_sub = st.radio("בחר נושא:", sub_topics, horizontal=True)
+        with col_nav:
+            selected_main = st.selectbox("נושא ראשי:", main_topics)
+            sub_topics = list(db[selected_main].keys())
+            selected_sub = st.radio("בחר פרק:", sub_topics)
         
-        st.markdown("---")
-        
-        # הצגת התוכן
-        content_data = db[selected_main][selected_sub]
-        
-        # 1. כרטיס טקסט
-        st.markdown(f'<div class="content-card">{content_data["text"]}</div>', unsafe_allow_html=True) # שימוש במרקדאון רגיל בתוך HTML לא תמיד עובד טוב, עדיף st.markdown נקי:
-        
-        # הצגה נקייה של הטקסט (תומך בכותרות, בולטים וכו')
-        # st.markdown(content_data["text"]) 
-        
-        col_media1, col_media2 = st.columns(2)
-        
-        # 2. תמונה (אם יש)
-        with col_media1:
+        with col_content:
+            content_data = db[selected_main][selected_sub]
+            
+            # הצגת הטקסט בתוך כרטיסייה
+            st.markdown(f"""
+            <div class="content-card">
+            {content_data["text"]}
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # מדיה
             if content_data.get("image"):
-                st.image(content_data["image"], caption="תמונה להמחשה", use_container_width=True)
-                
-        # 3. וידאו (אם יש)
-        with col_media2:
+                st.image(content_data["image"], use_container_width=True)
             if content_data.get("video"):
                 st.video(content_data["video"])
 
-# 3. ממשק ניהול (CMS)
-elif menu == "⚙️ ניהול תוכן (CMS)":
-    st.title("⚙️ עריכת תכנים")
+# 3. ניהול תוכן
+elif menu == "⚙️ ניהול תוכן":
+    st.title("ממשק ניהול")
     
-    # בדיקת הרשאות (רק ישי)
     user_email = st.session_state.user_info.get('email', '')
     if user_email != 'yishaycopp@gmail.com':
-        st.error("⛔ אין לך הרשאת עריכה. (רק למנהל המערכת)")
+        st.error("⛔ אין הרשאה.")
     else:
-        st.info("כאן אתה יכול לערוך את כל התוכן באתר, להוסיף תמונות וסרטונים.")
-        
         db = st.session_state.content_db
+        tab1, tab2 = st.tabs(["✏️ עריכה", "➕ הוספה"])
         
-        # לשוניות: עריכה קיימת / הוספה חדשה
-        tab1, tab2, tab3 = st.tabs(["✏️ עריכת קיים", "➕ הוספת נושא חדש", "🗑️ מחיקה"])
-        
-        # --- עריכת קיים ---
         with tab1:
             if db:
-                edit_main = st.selectbox("בחר נושא לעריכה:", list(db.keys()), key='edit_main')
-                edit_sub = st.selectbox("בחר תת-נושא:", list(db[edit_main].keys()), key='edit_sub')
+                edit_main = st.selectbox("נושא ראשי:", list(db.keys()))
+                edit_sub = st.selectbox("תת-נושא:", list(db[edit_main].keys()))
+                current = db[edit_main][edit_sub]
                 
-                # טעינת הנתונים הקיימים לתוך הטופס
-                current_data = db[edit_main][edit_sub]
-                
-                with st.form("edit_form"):
-                    new_text = st.text_area("תוכן הטקסט (ניתן להשתמש ב-Markdown)", value=current_data['text'], height=300)
-                    new_img = st.text_input("קישור לתמונה (URL)", value=current_data.get('image', ''))
-                    new_vid = st.text_input("קישור לוידאו (YouTube/MP4)", value=current_data.get('video', ''))
+                with st.form("edit"):
+                    new_text = st.text_area("תוכן (Markdown)", value=current['text'], height=300)
+                    new_img = st.text_input("תמונה (URL)", value=current.get('image', ''))
+                    new_vid = st.text_input("וידאו (URL)", value=current.get('video', ''))
                     
-                    if st.form_submit_button("שמור שינויים 💾"):
-                        # עדכון הזיכרון
-                        st.session_state.content_db[edit_main][edit_sub] = {
-                            "text": new_text,
-                            "image": new_img,
-                            "video": new_vid
-                        }
-                        # שמירה לקובץ
+                    if st.form_submit_button("שמור"):
+                        st.session_state.content_db[edit_main][edit_sub] = {"text": new_text, "image": new_img, "video": new_vid}
                         save_data(st.session_state.content_db)
-                        st.success("התוכן עודכן בהצלחה!")
+                        st.success("נשמר!")
                         time.sleep(1)
                         st.rerun()
             else:
-                st.warning("אין תוכן לעריכה.")
+                st.warning("אין תוכן.")
 
-        # --- הוספת חדש ---
         with tab2:
-            add_type = st.radio("מה להוסיף?", ["נושא ראשי חדש", "תת-נושא לנושא קיים"])
+            new_main = st.text_input("שם נושא ראשי חדש (או השאר ריק להוספה לקיים)")
+            target_main = st.selectbox("או בחר נושא קיים:", list(db.keys()) if db else [])
             
-            if add_type == "נושא ראשי חדש":
-                with st.form("new_main_topic"):
-                    new_main_name = st.text_input("שם הנושא הראשי (למשל: נפרולוגיה)")
-                    if st.form_submit_button("צור נושא"):
-                        if new_main_name and new_main_name not in db:
-                            st.session_state.content_db[new_main_name] = {}
-                            save_data(st.session_state.content_db)
-                            st.success(f"נושא {new_main_name} נוצר!")
-                            st.rerun()
-                        else:
-                            st.error("שם לא תקין או כבר קיים")
-                            
-            else: # הוספת תת נושא
-                if db:
-                    target_main = st.selectbox("לאיזה נושא ראשי להוסיף?", list(db.keys()))
-                    with st.form("new_sub_topic"):
-                        new_sub_name = st.text_input("שם תת-הנושא (למשל: אי ספיקת כליות)")
-                        # תוכן התחלתי
-                        st.markdown("**תוכן ראשוני:**")
-                        init_text = st.text_area("טקסט")
-                        init_img = st.text_input("לינק לתמונה")
-                        init_vid = st.text_input("לינק לוידאו")
+            with st.form("add"):
+                new_sub = st.text_input("שם תת-נושא חדש")
+                init_text = st.text_area("תוכן")
+                
+                if st.form_submit_button("הוסף"):
+                    final_main = new_main if new_main else target_main
+                    if final_main and new_sub:
+                        if final_main not in st.session_state.content_db:
+                            st.session_state.content_db[final_main] = {}
                         
-                        if st.form_submit_button("צור תת-נושא"):
-                            if new_sub_name:
-                                st.session_state.content_db[target_main][new_sub_name] = {
-                                    "text": init_text,
-                                    "image": init_img,
-                                    "video": init_vid
-                                }
-                                save_data(st.session_state.content_db)
-                                st.success("נוסף בהצלחה!")
-                                st.rerun()
-                else:
-                    st.warning("צור קודם נושא ראשי.")
-
-        # --- מחיקה ---
-        with tab3:
-            st.warning("זהירות: מחיקה היא סופית!")
-            del_main = st.selectbox("נושא למחיקה:", list(db.keys()), key='del_main')
-            if st.button("מחק את כל הנושא הראשי הזה"):
-                del st.session_state.content_db[del_main]
-                save_data(st.session_state.content_db)
-                st.rerun()
+                        st.session_state.content_db[final_main][new_sub] = {"text": init_text, "image": "", "video": ""}
+                        save_data(st.session_state.content_db)
+                        st.success("נוסף!")
+                        st.rerun()
