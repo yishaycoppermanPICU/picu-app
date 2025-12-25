@@ -86,7 +86,7 @@ def build_auth_url(client_id, redirect_uri, state=None):
     if state:
         params['state'] = state
     # build query safely
-    qs = '&'.join([f"{k}={requests.utils.quote(str(v), safe='')}" for k, v in params.items()])
+    qs = '&'.join([f"{k}={requests.utils.quote(str(v), safe='')" for k, v in params.items()])
     return f"{base}?{qs}"
 
 # Verify id_token using Google's tokeninfo endpoint
@@ -119,11 +119,11 @@ def render_clean_html(text, sanitize=False):
     lines = html_text.split("<br>")
     formatted = []
     in_list = False
-
+    
     for line in lines:
         cl = line.strip()
         if not cl: continue
-
+        
         # כותרות
         if cl.startswith("###"):
             if in_list: formatted.append("</ul>"); in_list = False
@@ -131,18 +131,18 @@ def render_clean_html(text, sanitize=False):
         elif cl.startswith("##"):
             if in_list: formatted.append("</ul>"); in_list = False
             cl = f"<div style='background:linear-gradient(90deg, #e3f2fd 0%, #fff 100%); padding:12px; border-right:5px solid #1565c0; border-radius:6px; margin-top:30px;'><h2 style='color:#0d47a1; margin:0; font-size:1.5rem; font-weight:800;'>{cl.replace('##','')}</h2></div>"
-
+        
         # טקסט מודגש (כותרות פנימיות)
         elif "**" in cl and cl.startswith("**") and (":" in cl or len(cl.split("**")[1]) < 20):
             parts = cl.split("**")
             if len(parts) >= 3:
                 cl = f"<div style='margin:10px 0; background:#fafafa; padding:8px; border-radius:4px; border-right:3px solid #ef5350;'><span style='color:#c62828; font-weight:800; display:block;'>📌 {parts[1]}</span><span style='color:#37474f;'>{''.join(parts[2:])}</span></div>"
-
+        
         # רשימות
         elif cl.startswith("* ") or cl.startswith("- "):
             if not in_list: formatted.append("<ul style='margin-right:20px; list-style-type:disc;'>"); in_list = True
             content = cl[2:]
-            if "**" in content:
+            if "**" in content: 
                 parts = content.split("**")
                 new_c = ""
                 for i, p in enumerate(parts):
@@ -154,7 +154,7 @@ def render_clean_html(text, sanitize=False):
         else:
             # normal paragraph
             cl = f"<p style='color:#37474f; line-height:1.45; margin:6px 0;'>{cl}</p>"
-
+        
         formatted.append(cl)
     if in_list: formatted.append("</ul>")
     return '\n'.join(formatted)
@@ -244,8 +244,8 @@ with st.sidebar:
         if 'oauth_state' not in st.session_state:
             st.session_state['oauth_state'] = _secrets.token_urlsafe(16)
         auth_url = build_auth_url(client_id, redirect_uri, state=st.session_state['oauth_state'])
-        # show link - open in new tab
-        st.markdown(f"[התחבר עם Google]({auth_url}){{:target='_blank'}}", unsafe_allow_html=True)
+        # show link - open in same tab using styled anchor
+        st.markdown(f"<a class='google-btn' href='{auth_url}' target='_self'>התחבר עם Google</a>", unsafe_allow_html=True)
         st.caption('הקישור יפתח חלון חדש ויחזיר אותך חזרה ליישום לאחר התחברות.')
     else:
         st.info('לא ניתן לבנות לינק התחברות - הוסף את GOOGLE_CLIENT_ID ו-GOOGLE_REDIRECT_URI ל-st.secrets או ל-env')
@@ -257,7 +257,7 @@ query_params = st.experimental_get_query_params()
 if 'code' in query_params:
     # We only proceed if we have client_id and client_secret and redirect_uri
     if not (client_id and client_secret and redirect_uri):
-        st.error('חסרים פרטי Google OAuth (client_id / client_secret / redirect_uri). בדוק את ההגדרות.')
+        st.error('חסרים פרטי Google OAuth (client_id / client_secret /redirect_uri). בדוק את ההגדרות.')
         # clear query params to avoid loops
         st.experimental_set_query_params()
     else:
@@ -382,7 +382,7 @@ with col1:
         else:
             score = 0
             for i, q in enumerate(quiz, start=1):
-                st.markdown(f"**שאלה {i}:** {q.get('stem')}\n")
+                st.markdown(f"**שאלה {i}:** {q.get('stem')}\\n")
                 if q.get('type') == 'mcq':
                     opts = q.get('options', [])
                     choice = st.radio(f"בחר תשובה לשאלה {i}", opts, key=f'q_{i}')
@@ -392,7 +392,7 @@ with col1:
                             score += 1
                         else:
                             st.error('תשובה שגויה ❌')
-                            st.info(f"פתרון: {opts[q.get('answer')]}\n\nהסבר: {q.get('explanation','לא זמין')}")
+                            st.info(f"פתרון: {opts[q.get('answer')]}\\n\\nהסבר: {q.get('explanation','לא זמין')}")
                 else:
                     ans = st.text_input(f"תשובתך לשאלה {i}", key=f'free_{i}')
                     if st.button(f'בדוק שאלה {i}', key=f'check_free_{i}'):
