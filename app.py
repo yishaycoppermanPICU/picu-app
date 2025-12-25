@@ -353,6 +353,14 @@ PHARMA_CATEGORY = {
 }
 
 FULL_DB = {"💊 תרופות ופרמקולוגיה": PHARMA_CATEGORY, **MEDICAL_DB}
+# ספי ניקוד ואחזקת נוזלים
+CRITICAL_PENALTY = -30
+POSITIVE_FEEDBACK_THRESHOLD = 10
+MAINTENANCE_RATE_0_10KG = 4
+MAINTENANCE_RATE_10_20KG = 2
+MAINTENANCE_RATE_ABOVE_20KG = 1
+MAINTENANCE_BASE_10KG = 40
+MAINTENANCE_BASE_20KG = 60
 # ==============================================================================
 # חלק 5: מאגר שאלות + מחשבונים
 # ==============================================================================
@@ -383,14 +391,14 @@ def calc_glucose(weight):
 
 def calc_maintenance(weight):
     if weight <= 10:
-        hourly = weight * 4
+        hourly = weight * MAINTENANCE_RATE_0_10KG
     elif weight <= 20:
-        hourly = 40 + (weight - 10) * 2
+        hourly = MAINTENANCE_BASE_10KG + (weight - 10) * MAINTENANCE_RATE_10_20KG
     else:
-        hourly = 60 + (weight - 20) * 1
+        hourly = MAINTENANCE_BASE_20KG + (weight - 20) * MAINTENANCE_RATE_ABOVE_20KG
     daily = hourly * 24
     return f"נוזלי אחזקה: {hourly:.1f} מ\"ל/שעה (סה\"כ {daily:.0f} מ\"ל/יום) לפי כלל 4-2-1."
-    # ==============================================================================
+# ==============================================================================
 # חלק 6: מנוע סימולטור
 # ==============================================================================
 
@@ -435,6 +443,10 @@ class SimEngine:
              {"HR": 110, "BP": "100/70", "Sat": "100%"},
              [("המשך מעקב וטיפול", 10, "✅ סיימת בהצלחה."), ("-", 0, ""), ("-", 0, ""), ("-", 0, "")] )
         ]
+    def end_simulation(self):
+        # סימון סיום: העברת המונה לסוף כדי להפסיק את הלולאה
+        self.dead = True
+        self.step = len(self.data)
 
 if 'sim' not in st.session_state: st.session_state.sim = SimEngine()
     # ==============================================================================
@@ -508,7 +520,11 @@ elif st.session_state.page == "learn":
         choice = st.selectbox("בחר תרופה (א-ת):", drugs)
         data = data_source[cat]['topics'][choice]
     else:
-        topics = list(data_source[cat]['topics'].keys())
+        topics_dict = data_source.get(cat, {}).get('topics', {})
+        topics = list(topics_dict.keys())
+        if not topics:
+            st.info(f"אין נושאים זמינים עבור {cat}.")
+            st.stop()
         cols = st.columns(3)
         for i, t in enumerate(topics):
             icon = "✅" if t in st.session_state.completed else "⭕"
@@ -517,7 +533,7 @@ elif st.session_state.page == "learn":
         if choice not in topics:
             choice = topics[0]
             st.session_state.curr_topic = choice
-        data = data_source[cat]['topics'][choice]
+        data = topics_dict[choice]
         
     st.markdown("<div class='content-box'>", unsafe_allow_html=True)
     st.markdown(render_clean_html(data['text']), unsafe_allow_html=True)
@@ -539,7 +555,7 @@ elif st.session_state.page == "calc":
         w2 = st.number_input("משקל", 3.0, 100.0, 10.0, key="g")
         st.warning(calc_glucose(w2))
     with t4:
-        w3 = st.number_input("משקל לילד/תינוק", 2.0, 120.0, 20.0, key="m")
+        w3 = st.number_input("משקל לילד/תינוק", 2.0, 70.0, 20.0, key="m")
         st.success(calc_maintenance(w3))
 
 elif st.session_state.page == "sim":
@@ -547,16 +563,18 @@ elif st.session_state.page == "sim":
     s = st.session_state.sim
     if st.button("התחל מחדש"):
         s.reset()
-        st.session_state.pop('last_feedback', None)
+        if 'last_feedback' in st.session_state:
+            del st.session_state['last_feedback']
         st.rerun()
     
-    fb = st.session_state.pop('last_feedback', None)
+    fb = st.session_state.get('last_feedback')
     if fb:
         msg, delta = fb
-        if delta >= 10: st.success(msg)
+        if delta >= POSITIVE_FEEDBACK_THRESHOLD: st.success(msg)
         elif delta >= 0: st.info(msg)
-        elif delta <= -30: st.error(msg)
+        elif delta <= CRITICAL_PENALTY: st.error(msg)
         else: st.warning(msg)
+        del st.session_state['last_feedback']
     
     if s.step < len(s.data):
         d = s.data[s.step]
@@ -574,9 +592,8 @@ elif st.session_state.page == "sim":
                 s.score += opt[1]
                 s.log.append(f"שלב {s.step+1}: {opt[2]}")
                 st.session_state.last_feedback = (opt[2], opt[1])
-                if opt[1] <= -30:
-                    s.dead = True
-                    s.step = len(s.data)
+                if opt[1] <= CRITICAL_PENALTY:
+                    s.end_simulation()
                 else:
                     s.step += 1
                 st.rerun()
