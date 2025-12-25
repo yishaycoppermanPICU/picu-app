@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import streamlit as st
 import random
 import time
@@ -85,7 +86,7 @@ def build_auth_url(client_id, redirect_uri, state=None):
     }
     if state:
         params['state'] = state
-    # build query safely
+    # build query safely (URL-encode values)
     qs = '&'.join([f"{k}={requests.utils.quote(str(v), safe='')}" for k, v in params.items()])
     return f"{base}?{qs}"
 
@@ -115,15 +116,15 @@ def render_clean_html(text, sanitize=False):
     if not text: return ""
     if sanitize:
         text = html.escape(text)
-    html_text = text.replace("\\n", "<br>")
+    html_text = text.replace("\n", "<br>")
     lines = html_text.split("<br>")
     formatted = []
     in_list = False
-    
+
     for line in lines:
         cl = line.strip()
         if not cl: continue
-        
+
         # כותרות
         if cl.startswith("###"):
             if in_list: formatted.append("</ul>"); in_list = False
@@ -131,18 +132,18 @@ def render_clean_html(text, sanitize=False):
         elif cl.startswith("##"):
             if in_list: formatted.append("</ul>"); in_list = False
             cl = f"<div style='background:linear-gradient(90deg, #e3f2fd 0%, #fff 100%); padding:12px; border-right:5px solid #1565c0; border-radius:6px; margin-top:30px;'><h2 style='color:#0d47a1; margin:0; font-size:1.5rem; font-weight:800;'>{cl.replace('##','')}</h2></div>"
-        
+
         # טקסט מודגש (כותרות פנימיות)
         elif "**" in cl and cl.startswith("**") and (":" in cl or len(cl.split("**")[1]) < 20):
             parts = cl.split("**")
             if len(parts) >= 3:
                 cl = f"<div style='margin:10px 0; background:#fafafa; padding:8px; border-radius:4px; border-right:3px solid #ef5350;'><span style='color:#c62828; font-weight:800; display:block;'>📌 {parts[1]}</span><span style='color:#37474f;'>{''.join(parts[2:])}</span></div>"
-        
+
         # רשימות
         elif cl.startswith("* ") or cl.startswith("- "):
             if not in_list: formatted.append("<ul style='margin-right:20px; list-style-type:disc;'>"); in_list = True
             content = cl[2:]
-            if "**" in content: 
+            if "**" in content:
                 parts = content.split("**")
                 new_c = ""
                 for i, p in enumerate(parts):
@@ -154,10 +155,10 @@ def render_clean_html(text, sanitize=False):
         else:
             # normal paragraph
             cl = f"<p style='color:#37474f; line-height:1.45; margin:6px 0;'>{cl}</p>"
-        
+
         formatted.append(cl)
     if in_list: formatted.append("</ul>")
-    return '\\n'.join(formatted)
+    return '\n'.join(formatted)
 
 # ==================================================================================================
 # חלק 2: פונקציות למבחנים ושאלות
@@ -251,7 +252,7 @@ with st.sidebar:
         st.info('לא ניתן לבנות לינק התחברות - הוסף את GOOGLE_CLIENT_ID ו-GOOGLE_REDIRECT_URI ל-st.secrets או ל-env')
 
 # Detect if redirected back with code (and optional state)
-query_params = st.experimental_get_query_params()
+query_params = st.query_params
 
 # Process OAuth2 callback only if we have a code and credentials
 if 'code' in query_params:
@@ -259,7 +260,7 @@ if 'code' in query_params:
     if not (client_id and client_secret and redirect_uri):
         st.error('חסרים פרטי Google OAuth (client_id / client_secret /redirect_uri). בדוק את ההגדרות.')
         # clear query params to avoid loops
-        st.experimental_set_query_params()
+        st.set_query_params()
     else:
         code = query_params.get('code')[0]
         returned_state = query_params.get('state', [None])[0]
@@ -267,11 +268,11 @@ if 'code' in query_params:
         expected_state = st.session_state.get('oauth_state')
         if not expected_state:
             st.error('Missing expected OAuth state (session expired?). הבקשה נדחתה.')
-            st.experimental_set_query_params()
+            st.set_query_params()
         elif returned_state != expected_state:
             st.error('Mismatch in OAuth state parameter. הבקשה נדחתה (state לא תואם).')
             # clear params to avoid loops
-            st.experimental_set_query_params()
+            st.set_query_params()
         else:
             # exchange code for tokens (server-side)
             token_url = 'https://oauth2.googleapis.com/token'
@@ -317,7 +318,6 @@ if 'code' in query_params:
                         else:
                             st.error('שגיאה בשמירת המשתמש במסד הנתונים.')
                     else:
-                        # fixed: use double quotes so internal apostrophe doesn't break the string
                         st.error("אימות ה'id_token נכשל או לא התקבל מידע משתמש תקין.")
                 else:
                     # show helpful error (do not leak client_secret)
@@ -330,7 +330,7 @@ if 'code' in query_params:
                 st.error(f'שגיאה בתקשורת עם Google: {e}')
             finally:
                 # clear query params so code isn't re-used and to clean the URL
-                st.experimental_set_query_params()
+                st.set_query_params()
 
 # Logout
 if st.sidebar.button('התנתק'):
@@ -382,7 +382,7 @@ with col1:
         else:
             score = 0
             for i, q in enumerate(quiz, start=1):
-                st.markdown(f"**שאלה {i}:** {q.get('stem')}\\n")
+                st.markdown(f"**שאלה {i}:** {q.get('stem')}\n")
                 if q.get('type') == 'mcq':
                     opts = q.get('options', [])
                     choice = st.radio(f"בחר תשובה לשאלה {i}", opts, key=f'q_{i}')
@@ -392,7 +392,7 @@ with col1:
                             score += 1
                         else:
                             st.error('תשובה שגויה ❌')
-                            st.info(f"פתרון: {opts[q.get('answer')]}\\n\\nהסבר: {q.get('explanation','לא זמין')}")
+                            st.info(f"פתרון: {opts[q.get('answer')]}\n\nהסבר: {q.get('explanation','לא זמין')}")
                 else:
                     ans = st.text_input(f"תשובתך לשאלה {i}", key=f'free_{i}')
                     if st.button(f'בדוק שאלה {i}', key=f'check_free_{i}'):
@@ -443,22 +443,7 @@ if st.checkbox('הצג כלי שאלות מתקדמים'):
             st.error(f'שגיאה בקריאת הקובץ: {e}')
 
 st.markdown('\n\n---\n\n')
-st.info('לסקירה: אם תרצה, אני יכול להמשיך ולחבר Firebase Sign-In ולעשות עיצ[TRUNC]')
-# היכנס לתיקיית הפרויקט (אם לא שם כבר)
-cd /path/to/picu-app
+st.info('לסקירה: אם תרצה, אני יכול להמשיך ולחבר Firebase Sign-In ולעשות עיצובים נוספים.')
 
-# בדוק שיש עבודה נקייה
-git status
-
-# החלת ה-patch
-git apply fix-query-params-and-auth.patch
-
-# בדוק שהשינויים חלו
-git diff --staged || git diff
-
-# הוסף ושמור commit
-git add app.py
-git commit -m "fix: use st.query_params/st.set_query_params and correct auth URL build"
-
-# דחיפת שינויים ל־main
-git push origin main
+# Footer
+st.markdown("<div style='margin-top:30px; color:#546e7a;'>נוצר על ידי צוות PICU Pro — שיפורים אוטומטיים: איסוף אימיילים, UI משופר, כלי ניהול ושאלות.</div>", unsafe_allow_html=True)
