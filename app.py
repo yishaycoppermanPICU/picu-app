@@ -1,7 +1,6 @@
 import streamlit as st
 import random
 import time
-import html
 from datetime import datetime
 
 # ==============================================================================
@@ -16,10 +15,8 @@ st.set_page_config(
 )
 
 # --- מנוע רינדור HTML חכם (מונע שבירת שורות) ---
-def render_clean_html(text, sanitize=False):
+def render_clean_html(text):
     if not text: return ""
-    if sanitize:
-        text = html.escape(text)
     html = text.replace("\n", "<br>")
     lines = html.split("<br>")
     formatted = []
@@ -315,15 +312,31 @@ MEDICAL_DB = {
                 "text": """## לוקמיה ונויטרופניה
 **חום ונויטרופניה:** מצב חירום! סכנת ספסיס.
 **טיפול:** אנטיביוטיקה רחבת טווח (כולל פסאודומונס) תוך שעה!""", "image": ""},
+            "פאנציטופניה": {
+                "text": """## פאנציטופניה
+**הגדרה:** ירידה משמעותית בכל שורות הדם (טרומבוציטופניה, נויטרופניה, אנמיה).
+**גורמים נפוצים:** לוקמיה (לעיתים עם אורגנומגליה, לימפאדנופתיה, כאבי עצמות), אנמיה אפלסטית (תרופות ציטוטוקסיות/הקרנות, זיהומים ויראליים, חשיפה לבנזין/אדי דבק, לופוס, GVHD, הריון, אנורקסיה), ועוד.
+**טיפול:** 
+* במקרים חמורים/אנמיה אפלסטית: השתלת מח עצם או טיפול אימונוסופרסיבי (בטווח הקצר השתלה מתורם קרוב לרוב מהירה ופחות מסובכת). 
+* במקרים קלים: השגחה, טיפול תומך, עירויי דם לפי צורך, מניעת זיהומים, עד לשיפור השורות.""", "image": ""},
             "TLS (פירוק גידול)": {
                 "text": """## Tumor Lysis Syndrome
 **מעבדה:** היפרקלמיה, היפר-אוריצמיה, היפוקלצמיה.
 **טיפול:** הידרציה (בלי אשלגן!), Rasburicase (**אסור ב-G6PD!**).""", "image": ""},
             "מתן מוצרי דם": {
                 "text": """## מוצרי דם
-**PC:** מינון 10-15 מ"ל/ק"ג. חובה פילטר.
-**טסיות:** 5-10 מ"ל/ק"ג. **אסור במשאבה (IVAC)!** (הרס מכאני). לתת בגרביטציה.
-**הקרנה:** חובה במדוכאי חיסון.""", "image": ""}
+### טסיות (PLT)
+**התוויה:** טרומבוציטופניה <10,000, מתן פרופילקטי בלויקמיה/כימו/HSCT, אנמיה אפלסטית, ITP, TTP/HIT.
+**מתן:** מזרק/פאמפ עם פילטר טסיות. **לא ב-IVAC** (הורס טסיות). הקרנה חובה. מינון ~5 מ"ל/ק"ג. מעקב בתחילת וסיום מתן. תוקף עד 5 ימים.
+
+### CRYO (Cryoprecipitate)
+פיברינוגן, פקטור VIII/XIII, vWF, פיברונקטין.
+**התוויה:** מחסור בפיברינוגן/פקטור 8, דמם חריף.
+**מתן:** IVAC/פאמפ עם פילטר דם. תוקף: שנה בהקפאה; לאחר הפשרה טוב ל-6 שעות בלבד.
+
+### PC (Packed RBCs)
+מנה מרוכזת (Hct ~70%). אינדיקציה: המוגלובין נמוך/תיקון אנמיה. **מינון:** 10-15 מ"ל/ק"ג. חובה פילטר.
+""", "image": ""}
         }
     },
     "🍏 גסטרו ומטבולי": {
@@ -346,14 +359,24 @@ MEDICAL_DB = {
         }
     }
 }
-# מיזוג מאגרי התוכן למבנה אחיד
-FULL_DB = {**MEDICAL_DB}
-drugs_topics = DRUGS_DB if isinstance(DRUGS_DB, dict) else {}
-FULL_DB["💊 תרופות ופרמקולוגיה"] = {
+# ==============================================================================
+# חלק 4: מיזוג מאגר מרכזי (FULL_DB)
+# ==============================================================================
+PHARMA_CATEGORY = {
     "icon": "💊",
-    "description": "מאגר תרופות ופרמקולוגיה.",
-    "topics": drugs_topics
+    "description": "מינונים, פרמקולוגיה ודגשים בטיחותיים.",
+    "topics": DRUGS_DB
 }
+
+FULL_DB = {"💊 תרופות ופרמקולוגיה": PHARMA_CATEGORY, **MEDICAL_DB}
+# ספי ניקוד ואחזקת נוזלים
+CRITICAL_PENALTY = -30
+POSITIVE_FEEDBACK_THRESHOLD = 10
+MAINTENANCE_RATE_0_10KG = 4
+MAINTENANCE_RATE_10_20KG = 2
+MAINTENANCE_RATE_ABOVE_20KG = 1
+MAINTENANCE_BASE_10KG = 40
+MAINTENANCE_BASE_20KG = 60
 # ==============================================================================
 # חלק 5: מאגר שאלות + מחשבונים
 # ==============================================================================
@@ -381,7 +404,17 @@ def calc_ett(age):
 
 def calc_glucose(weight):
     return f"בולוס D10W (2-5 מ\"ל/ק\"ג): {weight*2} - {weight*5} מ\"ל."
-    # ==============================================================================
+
+def calc_maintenance(weight):
+    if weight <= 10:
+        hourly = weight * MAINTENANCE_RATE_0_10KG
+    elif weight <= 20:
+        hourly = MAINTENANCE_BASE_10KG + (weight - 10) * MAINTENANCE_RATE_10_20KG
+    else:
+        hourly = MAINTENANCE_BASE_20KG + (weight - 20) * MAINTENANCE_RATE_ABOVE_20KG
+    daily = hourly * 24
+    return f"נוזלי אחזקה: {hourly:.1f} מ\"ל/שעה (סה\"כ {daily:.0f} מ\"ל/יום) לפי כלל 4-2-1."
+# ==============================================================================
 # חלק 6: מנוע סימולטור
 # ==============================================================================
 
@@ -426,6 +459,10 @@ class SimEngine:
              {"HR": 110, "BP": "100/70", "Sat": "100%"},
              [("המשך מעקב וטיפול", 10, "✅ סיימת בהצלחה."), ("-", 0, ""), ("-", 0, ""), ("-", 0, "")] )
         ]
+    def end_simulation(self):
+        # סימון סיום: העברת המונה לסוף כדי להפסיק את הלולאה
+        self.dead = True
+        self.step = len(self.data)
 
 if 'sim' not in st.session_state: st.session_state.sim = SimEngine()
     # ==============================================================================
@@ -488,28 +525,31 @@ if st.session_state.page == "home":
 
 elif st.session_state.page == "learn":
     st.title("ספרייה מקצועית")
-    # מיזוג שני ה-DB
     cats = list(FULL_DB.keys())
-    
     idx = 0
     if st.session_state.get('cat_filter') in cats: idx = cats.index(st.session_state.cat_filter)
     cat = st.selectbox("תחום:", cats, index=idx)
-    
-    # בדיקה איפה הדאטה נמצא
     data_source = FULL_DB
-    
+
     if "תרופות" in cat:
         drugs = sorted(data_source[cat]['topics'].keys())
         choice = st.selectbox("בחר תרופה (א-ת):", drugs)
         data = data_source[cat]['topics'][choice]
     else:
-        topics = list(data_source[cat]['topics'].keys())
+        topics_dict = data_source.get(cat, {}).get('topics', {})
+        topics = list(topics_dict.keys())
+        if not topics:
+            st.info(f"אין נושאים זמינים עבור {cat}.")
+            st.stop()
         cols = st.columns(3)
         for i, t in enumerate(topics):
             icon = "✅" if t in st.session_state.completed else "⭕"
             if cols[i%3].button(f"{icon} {t}"): st.session_state.curr_topic = t
         choice = st.session_state.get('curr_topic', topics[0])
-        data = data_source[cat]['topics'][choice]
+        if choice not in topics:
+            choice = topics[0]
+            st.session_state.curr_topic = choice
+        data = topics_dict[choice]
         
     st.markdown("<div class='content-box'>", unsafe_allow_html=True)
     st.markdown(render_clean_html(data['text']), unsafe_allow_html=True)
@@ -519,7 +559,7 @@ elif st.session_state.page == "learn":
 
 elif st.session_state.page == "calc":
     st.title("מחשבונים")
-    t1, t2, t3 = st.tabs(["כוויות", "טובוס", "גלוקוז"])
+    t1, t2, t3, t4 = st.tabs(["כוויות", "טובוס", "גלוקוז", "נוזלי אחזקה"])
     with t1:
         w = st.number_input("משקל (ק\"ג)", 3.0, 100.0, 10.0)
         bsa = st.number_input("% כוויה", 1.0, 100.0, 10.0)
@@ -530,11 +570,27 @@ elif st.session_state.page == "calc":
     with t3:
         w2 = st.number_input("משקל", 3.0, 100.0, 10.0, key="g")
         st.warning(calc_glucose(w2))
+    with t4:
+        w3 = st.number_input("משקל לילד/תינוק", 2.0, 70.0, 20.0, key="m")
+        st.success(calc_maintenance(w3))
 
 elif st.session_state.page == "sim":
     st.title("סימולטור")
     s = st.session_state.sim
-    if st.button("התחל מחדש"): s.reset(); st.rerun()
+    if st.button("התחל מחדש"):
+        s.reset()
+        if 'last_feedback' in st.session_state:
+            del st.session_state['last_feedback']
+        st.rerun()
+    
+    fb = st.session_state.get('last_feedback')
+    if fb:
+        msg, delta = fb
+        if delta >= POSITIVE_FEEDBACK_THRESHOLD: st.success(msg)
+        elif delta >= 0: st.info(msg)
+        elif delta <= CRITICAL_PENALTY: st.error(msg)
+        else: st.warning(msg)
+        del st.session_state['last_feedback']
     
     if s.step < len(s.data):
         d = s.data[s.step]
@@ -551,8 +607,11 @@ elif st.session_state.page == "sim":
             if cols[i%2].button(opt[0], key=f"o{s.step}{i}"):
                 s.score += opt[1]
                 s.log.append(f"שלב {s.step+1}: {opt[2]}")
-                if opt[1] <= -30: s.dead = True
-                s.step += 1
+                st.session_state.last_feedback = (opt[2], opt[1])
+                if opt[1] <= CRITICAL_PENALTY:
+                    s.end_simulation()
+                else:
+                    s.step += 1
                 st.rerun()
     else:
         if s.dead: st.error("💀 המטופל קרס.")
@@ -588,35 +647,17 @@ elif st.session_state.page == "quiz":
 
 elif st.session_state.page == "admin":
     st.title("ניהול")
-    st.info("ניתן להדביק כאן טקסט או להעלות קובץ תוכן (txt/md) ואסדר אותו בדף בהתאם.")
-    uploaded = st.file_uploader("העלה קובץ טקסט/Markdown", type=["txt", "md"])
-    pasted = st.text_area("או הדבק כאן טקסט חופשי")
+    st.warning("הדבקת תוכן זמינה לתצוגה בלבד (אין שמירה תמידית).")
+    raw_text = st.text_area("הדביקו כאן תוכן לעיבוד ותרחישים", height=300)
+    c1, c2 = st.columns(2)
+    if c1.button("תצוגה מקדימה"):
+        st.session_state.admin_preview = raw_text
+    if c2.button("נקה"):
+        st.session_state.pop('admin_preview', None)
+        raw_text = ""
+    preview = st.session_state.get('admin_preview') if 'admin_preview' in st.session_state else raw_text
+    if preview:
+        st.markdown("<div class='content-box'>", unsafe_allow_html=True)
+        st.markdown(render_clean_html(preview), unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
     
-    file_content = ""
-    if uploaded:
-        raw = uploaded.getvalue()
-        max_bytes = 2_000_000  # ~2MB
-        if len(raw) > max_bytes:
-            st.warning("קובץ גדול מדי (מעל 2MB). העלה קובץ קטן יותר.")
-        else:
-            try:
-                file_content = raw.decode("utf-8")
-            except UnicodeDecodeError:
-                st.warning("לא ניתן לפענח את הקובץ ב-UTF-8, מוצג עם החלפת תווים בעייתיים.")
-                file_content = raw.decode("utf-8", errors="replace")
-    
-    file_clean = file_content.strip()
-    pasted_clean = pasted.strip()
-    if st.button("טען לתצוגה"):
-        if file_clean and pasted_clean:
-            st.info("הקובץ שהועלה מקבל עדיפות על הטקסט המודבק.")
-        content = file_clean or pasted_clean
-        if content:
-            st.session_state["admin_preview"] = content
-            st.success("קיבלתי את התוכן. תצוגה מקדימה מופיעה למטה.")
-        else:
-            st.warning("יש להדביק טקסט או לבחור קובץ.")
-    
-    if st.session_state.get("admin_preview"):
-        st.subheader("תצוגה מקדימה")
-        st.markdown(render_clean_html(st.session_state["admin_preview"], sanitize=True), unsafe_allow_html=True)
