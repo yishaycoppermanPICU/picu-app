@@ -1,142 +1,122 @@
 import streamlit as st
 import pandas as pd
 import random
-from docx import Document
-import io
 
 # --- הגדרות דף ---
-st.set_page_config(page_title="PICU Learning Hub", layout="wide", page_icon="🏥")
+st.set_page_config(page_title="PICU Master Hub", layout="wide", page_icon="🏥")
 
-# --- הזרקת CSS לתיקון RTL, יישור כותרות לאמצע ועיצוב מקצועי ---
+# --- הזרקת CSS לעיצוב RTL, כותרות באמצע וחיפוש ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;700&display=swap');
+    html, body, [class*="css"] { font-family: 'Assistant', sans-serif; direction: RTL; text-align: right; }
     
-    html, body, [class*="css"] {
-        font-family: 'Assistant', sans-serif;
-        direction: RTL;
-        text-align: right;
-    }
+    h1, h2, h3 { text-align: center !important; direction: RTL !important; color: #1e3d59; }
     
-    /* יישור כותרות לאמצע */
-    h1, h2, h3 {
-        text-align: center !important;
-        direction: RTL !important;
-        color: #1e3d59;
+    .stMarkdown, .stText, .stButton, .stRadio, .stSelectbox, .stTextInput, .stMetric { 
+        direction: RTL !important; text-align: right !important; 
     }
     
-    /* יישור טקסט כללי לימין */
-    .stMarkdown, .stText, .stButton, .stRadio, .stSelectbox, .stTextInput, .stMetric {
-        direction: RTL !important;
-        text-align: right !important;
-    }
-
-    /* כפתורים מיושרים ונוחים */
-    .stButton>button {
-        width: 100%;
-        border-radius: 10px;
-        background-color: #2e59a8;
-        color: white;
-        font-weight: bold;
-    }
-
-    /* עיצוב כרטיסיות (Cards) */
-    .med-card {
-        background-color: #f8f9fa;
-        border-right: 6px solid #2e59a8;
-        padding: 20px;
-        border-radius: 12px;
-        margin-bottom: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    .med-card { 
+        background-color: #ffffff; border-right: 8px solid #2e59a8; padding: 20px; 
+        border-radius: 15px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
     }
     
-    /* תיקון לסיידבר */
-    [data-testid="stSidebar"] {
-        direction: RTL !important;
-        text-align: right !important;
-    }
+    [data-testid="stSidebar"] { direction: RTL !important; text-align: right !important; }
+    .stButton>button { width: 100%; border-radius: 25px; background-color: #2e59a8; color: white; height: 3em; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- בסיס נתונים פנימי (מבוסס על ה-PDF שלך) ---
+# --- בסיס נתונים (מבוסס על ה-PDF של מבחן התרופות) ---
 if 'points' not in st.session_state: st.session_state.points = 0
 if 'user_name' not in st.session_state: st.session_state.user_name = None
-if 'scenario_step' not in st.session_state: st.session_state.scenario_step = 0
+if 'requests' not in st.session_state: st.session_state.requests = []
+
+# מאגר מידע מאוחד לחיפוש
+knowledge_base = {
+    "אשלגן (Potassium)": "רמות תקינות: 3.5-5. מינון IV: 0.5-1 mEq/kg. קצב מקסימלי: 0.5 mEq/kg/h. דגש: יש לתקן מגנזיום תחילה למניעת היפוקלמיה עמידה. אסור לתת במתן מהיר (Bolus).",
+    "אדרנלין (Adrenaline)": "החייאה: 0.01mg/kg (1:10,000). מקסימום 1mg. ניתן כל 2 דקות ב-PALS. אינהלציה לסטרידור: 400mcg/kg (עד 5mg).",
+    "אטרופין (Atropine)": "לברדיקרדיה או ייבוש הפרשות באינטובציה (עם קטמין). מינון: 0.02mg/kg. מינימום למנה: 0.1mg למניעת תגובה פרדוקסלית.",
+    "אדנוזין (Adenosine)": "ל-SVT. מינון ראשון: 0.1mg/kg (עד 6mg). מינון שני: 0.2mg/kg (עד 12mg). דגש: הזרקה מהירה (Flash) בווריד הכי קרוב ללב.",
+    "קלציום גלוקונט 10%": "להיפוקלצמיה או הגנה על הלב בהיפרקלמיה. מינון: 100mg/kg. זהירות מקריסטליזציה.",
+    "לידוקאין 1%": "להפרעות קצב VT/VF עמידות לשוק. מינון העמסה: 1mg/kg. ניתן לתת בטובוס במינון כפול.",
+    "פוסיד (Furosemide)": "משתן לולאה. מינון: 0.5-1 mg/kg. דגש: עלול לגרום להיפוקלמיה והיפונתרמיה.",
+    "דיאמוקס (Diamox)": "להורדת ICP או בססת מטבולית. מינון: 2.5mg/kg מניעתי.",
+    "מניטול (Mannitol)": "משתן אוסמוטי להורדת ICP. פועל תוך משיכת נוזלים לכלי הדם. דגש: מתן דרך פילטר 1.2 מיקרון.",
+    "דופמין (Dopamine)": "מינון נמוך (1-5): כליות. ביניים (5-15): אינוטרופי. גבוה (>15): ואזופרסורי (אלפא).",
+    "מילרינון (Milrinone)": "Inodilator. משפר כיווץ ומרחיב כלי דם ריאתיים וסיסטמיים. יעד מינון: 0.25-0.75 mcg/kg/min.",
+    "טסיות (PLT)": "מינון 5ml/kg. אסור ב-IVAC (הלחץ מפרק את הטסיות).",
+    "FFP (פלסמה)": "מכיל גורמי קריאה. סוג AB הוא התורם האוניברסלי."
+}
 
 # --- תפריט צדי ---
 with st.sidebar:
-    st.title("🏥 PICU Train & Play")
+    st.title("🏥 PICU Learning Hub")
     if not st.session_state.user_name:
         name = st.text_input("שם מלא:")
-        email = st.text_input("אימייל:")
-        if st.button("התחל ללמוד"):
-            if name: st.session_state.user_name = name; st.rerun()
+        if st.button("התחבר"):
+            st.session_state.user_name = name
+            st.rerun()
     else:
-        st.write(f"שלום, **{st.session_state.user_name}**")
-        st.metric("XP - ניקוד", st.session_state.points)
+        st.success(f"שלום, **{st.session_state.user_name}**")
+        st.metric("XP (ניקוד)", st.session_state.points)
     
     st.divider()
-    page = st.radio("ניווט:", ["דאשבורד", "מרכז ידע (הסיכומים שלך)", "מבחן אישי", "התרחיש המתגלגל", "בנק תרופות", "ניהול"])
+    page = st.radio("ניווט:", ["דאשבורד", "חיפוש מהיר", "מרכז למידה", "בנק תרופות", "התרחיש המתגלגל", "בקשת תוכן", "ניהול (Admin)"])
 
 # --- דאשבורד ---
 if page == "דאשבורד":
-    st.header("לוח בקרה לימודי")
+    st.header("ברוכים הבאים ל-LMS של היחידה")
     col1, col2 = st.columns([2, 1])
     with col1:
-        st.markdown("""<div class="med-card"><h3>💊 תרופת היום: Propranolol (דרלין)</h3><p><b>דגש PICU:</b> משמשת לטיפול ב<b>המאנגיומות</b> אינפנטיליות. <b>עובדה מעניינת:</b> התגלה במקרה שטיפול בדרלין לבעיית לב בתינוק גרם לנסיגת המאנגיומה. משמשת גם למניעת מגרנות וחרדת ביצוע.</p></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="med-card"><h3>💊 תרופת היום: Insulin (אינסולין)</h3>
+        <p><b>שימוש ב-PICU:</b> לא רק לסוכרת! משמש לטיפול דחוף ב<b>היפרקלמיה</b> (מעביר אשלגן לתוך התא בשילוב גלוקוז).</p>
+        <p><b>עובדה מעניינת:</b> ב-DKA, האינסולין עוצר את יצירת גופי הקטון הרבה לפני שהוא מאזן את הסוכר.</p></div>""", unsafe_allow_html=True)
     with col2:
-        st.subheader("🏆 טבלת שיאים")
-        st.table(pd.DataFrame({"שם": ["אחות אחראית", "דנה", "ערן"], "XP": [1500, 1100, 850]}))
+        st.subheader("🏆 מובילי למידה")
+        st.write("1. אחות אחראית - 2400 XP")
+        st.write("2. דנה כהן - 1850 XP")
 
-# --- מרכז ידע (כל התוכן מה-PDF) ---
-elif page == "מרכז ידע (הסיכומים שלך)":
-    st.header("ספריה קלינית (מבוסס על הסיכום שלך)")
-    cat = st.tabs(["המטואונקולוגיה", "שוק וספסיס", "TBI ו-ICP", "צנתרים מרכזיים"])
-    
-    with cat[0]:
-        st.subheader("פאנציטופניה ומוצרי דם")
-        st.markdown("""
-        - **טסיות (PLT):** התוויה מתחת ל-10,000 או ב-HIT/TTP. **איסור מוחלט:** מתן ב-IVAC (הלחץ הורס את הטסיות).
-        - **Cryoprecipitate:** מכיל פיברינוגן (פקטור I), פקטור VIII, פקטור XIII, vWF ופיברונקטין.
-        - **FFP:** מנה של 200 מ"ל. סוג AB הוא ה-Universal Donor (אין בו אנטיגנים).
-        - **TLS (Tumor Lysis Syndrome):** מצב חירום אונקולוגי. מאופיין בהיפרקלמיה, היפרפוספטמיה, היפוקלצמיה והיפראוריצמיה.
-        """)
-        
-    with cat[1]:
-        st.subheader("שוק (Shock) וספסיס")
-        st.markdown("""
-        - **שוק ספטי:** טיפול תוך שעה! מתחילים בולוסים של 10-20 מ"ל/ק"ג עד 60 מ"ל/ק"ג. 
-        - **שוק קרדיוגני:** נזהרים מנוזלים! סימנים: כבד מוגדל (Liver drop), חרחורים בריאות.
-        - **שוק אנפילקטי:** הטיפול הראשון והחשוב ביותר - **אפינפרין IM** (מינון 0.01mg/kg).
-        """)
+# --- מנוע חיפוש ---
+elif page == "חיפוש מהיר":
+    st.header("🔍 חיפוש נושאים ותרופות")
+    search_query = st.text_input("הקלד שם תרופה או מחלה (למשל: אשלגן, שוק, ICP):")
+    if search_query:
+        results = {k: v for k, v in knowledge_base.items() if search_query in k or search_query in v}
+        if results:
+            for title, content in results.items():
+                st.markdown(f"""<div class="med-card"><b>{title}</b><br>{content}</div>""", unsafe_allow_html=True)
+        else:
+            st.warning("לא נמצאו תוצאות. נסה מונח אחר או שלח בקשה להוספה.")
 
-    with cat[2]:
-        st.subheader("TBI (פגיעת ראש) ו-ICP")
-        st.markdown("""
-        - **CPP:** מחושב כ-MAP מינוס ICP. יעד בילדים: 40-60.
-        - **Cushing Triad:** ברדיקרדיה, ירידה בנשימה, יתר לחץ דם - מעיד על לחץ תוך גולגולתי גבוה מאוד.
-        - **ניהול:** הרמת ראש ל-30 מעלות, שמירה על נורמותרמיה, מתן סליין היפרטוני או מניטול להורדת בצקת.
-        """)
-
-# --- בנק תרופות (מעודכן עם סיכום התרופות) ---
+# --- בנק תרופות (מבוסס PDF) ---
 elif page == "בנק תרופות":
-    st.header("מאגר תרופות טיפול נמרץ ילדים")
-    meds = [
-        {"name": "Adrenaline (Epinephrine)", "dose": "0.01mg/kg (1:10,000)", "pearl": "במינון נמוך פועל בעיקר על רצפטורי Beta (שיפור כיווץ), במינון גבוה פועל על Alpha (כיווץ כלי דם)."},
-        {"name": "Milrinone", "dose": "0.25-0.75 mcg/kg/min", "pearl": "Inodilator - משפר כיווץ ומרחיב כלי דם. חשוב לנטר לחץ דם בגלל סכנת היפוטנסיביות."},
-        {"name": "Rasburicase", "dose": "0.2 mg/kg", "pearl": "תרופת הבחירה ב-TLS פעיל. מפרקת חומצה אורית קיימת (בשונה מאלופורינול שרק מונע יצירה חדשה)."},
-        {"name": "Midazolam (Dormicum)", "dose": "0.1-0.2 mg/kg IV", "pearl": "סדציה קלאסית. זהירות בשילוב עם אופיואידים בגלל דיכוי נשימתי."}
-    ]
-    for m in meds:
-        st.markdown(f"""<div class="med-card"><b>{m['name']}</b><br>מינון: {m['dose']}<br><i>{m['pearl']}</i></div>""", unsafe_allow_html=True)
+    st.header("בנק תרופות PICU - פרוטוקול שיב''א")
+    search_med = st.text_input("חפש תרופה בבנק:")
+    for med, info in knowledge_base.items():
+        if search_med.lower() in med.lower():
+            with st.expander(f"💊 {med}"):
+                st.write(info)
 
-# --- התרחיש המתגלגל ---
-elif page == "התרחיש המתגלגל":
-    st.header("🎢 סימולציה: התדרדרות מהירה")
-    if st.session_state.scenario_step == 0:
-        st.subheader("שלב 1: הודעה מהשטח")
-        st.info("ילד בן 6 בדרך אליכם לאחר תאונת דרכים קשה. GCS 7, אישונים שווים.")
-        ans = st.radio("מהי הפעולה הדחופה ביותר עם הגעתו?", ["צילום רנטגן", "אינטובציה להגנה על נתיב אוויר", "מתן מנת דם"])
-        if st.button("בצע פעולה"):
-            if "אינטובציה" in ans: st.success("נכון מאוד! GCS מתחת ל-8 מחייב הגנה על נתיב אוויר."); st.session_state.points += 20; st.session_state.scenario_step = 1; st.rerun()
-            else: st.error("טעות. קודם כל נתיב אוויר (ABC).")
+# --- בקשת תוכן ---
+elif page == "בקשת תוכן":
+    st.header("📝 בקשת תוכן חדש")
+    st.write("חסרה תרופה? רוצה ללמוד על מחלה שלא מופיעה באתר? כתוב לנו!")
+    with st.form("request_form"):
+        req_type = st.selectbox("סוג הבקשה:", ["תרופה", "מחלה", "פרוטוקול טכני", "אחר"])
+        req_subject = st.text_input("שם הנושא:")
+        req_details = st.text_area("פרטים נוספים:")
+        if st.form_submit_button("שלח בקשה"):
+            st.session_state.requests.append({"user": st.session_state.user_name, "type": req_type, "subject": req_subject})
+            st.success("הבקשה נשלחה למנהל האתר ותיבחן בקרוב!")
+
+# --- ניהול (Admin) ---
+elif page == "ניהול (Admin)":
+    pwd = st.text_input("סיסמת מנהל:", type="password")
+    if pwd == "PICU123":
+        st.header("🛠 פאנל ניהול")
+        st.subheader("בקשות משתמשים לתוכן חדש")
+        if st.session_state.requests:
+            st.table(pd.DataFrame(st.session_state.requests))
+        else:
+            st.write("אין בקשות חדשות.")
