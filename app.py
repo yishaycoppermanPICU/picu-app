@@ -605,10 +605,12 @@ elif st.session_state.page == "admin":
                 st.warning("לא ניתן לפענח את הקובץ ב-UTF-8, מוצג עם החלפת תווים בעייתיים.")
                 file_content = raw.decode("utf-8", errors="replace")
     
+    file_clean = file_content.strip()
+    pasted_clean = pasted.strip()
     if st.button("טען לתצוגה"):
-        if file_content.strip() and pasted.strip():
+        if file_clean and pasted_clean:
             st.info("הקובץ שהועלה מקבל עדיפות על הטקסט המודבק.")
-        content = file_content.strip() or pasted.strip()
+        content = file_clean or pasted_clean
         if content:
             st.session_state["admin_preview"] = content
             st.success("קיבלתי את התוכן. תצוגה מקדימה מופיעה למטה.")
