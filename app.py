@@ -1,21 +1,49 @@
 import streamlit as st
 import pandas as pd
-import random
 from datetime import datetime
 
 # --- הגדרת עמוד ועיצוב ---
-st.set_page_config(page_title="אֲחָיוֹת עם ישי קופרמן", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="אֲחָיוּת עם ישי קופרמן", layout="wide", initial_sidebar_state="expanded")
 
-# עיצוב לימין-לשמאל (RTL) והתאמות ויזואליות
+# עיצוב לימין-לשמאל (RTL) והתאמות ויזואליות - גרסה משופרת
 st.markdown("""
 <style>
-    .stApp { direction: rtl; text-align: right; }
-    h1, h2, h3, p, div { text-align: right; }
-    .stSidebar { text-align: right; }
-    /* הדגשת כותרות */
+    /* כיוון כללי של האפליקציה */
+    .stApp {
+        direction: rtl;
+        text-align: right;
+    }
+    
+    /* יישור טקסטים בכותרות ופסקאות */
+    h1, h2, h3, h4, h5, h6, p, div, span {
+        text-align: right;
+    }
+    
+    /* יישור תפריט הצד */
+    section[data-testid="stSidebar"] {
+        direction: rtl;
+        text-align: right;
+    }
+    
+    /* יישור שדות קלט (Input fields) */
+    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
+        direction: rtl;
+        text-align: right;
+    }
+    
+    /* יישור כפתורי רדיו וצ'קבוקסים */
+    .stRadio, .stCheckbox {
+        direction: rtl;
+        text-align: right;
+    }
+    
+    /* תיקון ספציפי למרקדאון */
+    .stMarkdown {
+        text-align: right !important;
+    }
+    
+    /* צבע כותרת ראשית */
     h1 { color: #2E86C1; }
-    /* תיקון ליישור רכיבים מסוימים */
-    .stMarkdown { text-align: right !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -46,8 +74,6 @@ if 'user_info' not in st.session_state:
 
 # --- פונקציות עזר ---
 def save_score(user, score, topic):
-    # כאן בעתיד נשמור לדאטה-בייס אמיתי
-    # כרגע נשמור בזיכרון של האפליקציה רק להדגמה
     if 'leaderboard' not in st.session_state:
         st.session_state.leaderboard = []
     
@@ -62,20 +88,40 @@ def save_score(user, score, topic):
 
 # --- תפריט צד (Sidebar) ---
 with st.sidebar:
-    st.image("https://img.icons8.com/color/96/nurse-male--v1.png", width=80) # אייקון זמני
+    st.image("https://img.icons8.com/color/96/nurse-male--v1.png", width=80) 
     st.title("פרופיל משתמש")
     
-    # טופס כניסה מהיר
-    name = st.text_input("שם מלא")
-    email = st.text_input("אימייל")
-    hospital = st.selectbox("בית חולים", ["שיבא - תל השומר", "שניידר", "איכילוב - דנה", "הדסה", "רמב\"ם", "סורוקה", "אחר"])
-    department = st.text_input("מחלקה", value="טיפול נמרץ ילדים")
+    # בדיקה האם המשתמש כבר מחובר
+    if not st.session_state.user_info:
+        st.info("אנא הזן פרטים כדי להיכנס למערכת")
+        
+        # יצירת טופס (Form) - ככה הנתונים נשלחים רק בלחיצה על הכפתור
+        with st.form("login_form"):
+            name = st.text_input("שם מלא")
+            email = st.text_input("אימייל")
+            hospital = st.selectbox("בית חולים", ["שיבא - תל השומר", "שניידר", "איכילוב - דנה", "הדסה", "רמב\"ם", "סורוקה", "אחר"])
+            department = st.text_input("מחלקה", value="טיפול נמרץ ילדים")
+            
+            # כפתור האישור בתוך הטופס
+            submit_button = st.form_submit_button("אישור פרטים וכניסה")
+        
+        if submit_button:
+            if name and email:
+                st.session_state.user_info = {"name": name, "email": email, "hospital": hospital, "department": department}
+                st.success(f"ברוך הבא, {name}!")
+                st.rerun() # רענון כדי שהסטטוס יתעדכן מיד
+            else:
+                st.error("חובה למלא שם ואימייל")
     
-    if name and email:
-        st.session_state.user_info = {"name": name, "email": email, "hospital": hospital, "department": department}
-        st.success(f"שלום, {name}")
     else:
-        st.warning("נא למלא פרטים כדי להתחיל")
+        # אם המשתמש מחובר - הצג את הפרטים וכפתור יציאה
+        user = st.session_state.user_info
+        st.success(f"מחובר כ: {user['name']}")
+        st.text(f"{user['hospital']}")
+        
+        if st.button("התנתק / החלף משתמש"):
+            st.session_state.user_info = {}
+            st.rerun()
 
     st.markdown("---")
     
@@ -88,7 +134,7 @@ with st.sidebar:
 # --- לוגיקה ראשית ---
 
 if menu == "דף הבית":
-    st.title("אֲחָיוֹת - עם ישי קופרמן")
+    st.title("אֲחָיוּת - עם ישי קופרמן")
     st.subheader("מערכת למידה מתקדמת לצוות טיפול נמרץ ילדים (PICU)")
     st.markdown("""
     ברוכים הבאים למערכת הלמידה. כאן תוכלו:
@@ -97,12 +143,14 @@ if menu == "דף הבית":
     * להתחרות עם מחלקות אחרות בארץ.
     * לבצע סימולציות קליניות של מקרי קיצון.
     """)
+    
+    if not st.session_state.user_info:
+        st.warning("⬅️ נא להירשם בתפריט הצד כדי להתחיל")
 
 elif menu == "חומר לימוד":
     st.header("📚 חומר לימוד")
     topic = st.selectbox("בחר נושא ללמידה:", ["הנשמה", "המודינמיקה", "פרמקולוגיה", "פרוצדורות"])
     st.info(f"מציג חומר לימוד בנושא: {topic}")
-    # כאן בעתיד נטען קבצי PDF או טקסט שאתה תספק
     st.markdown("### עקרונות בסיסיים")
     st.write("כאן יופיע התוכן המקצועי המפורט...")
 
@@ -110,7 +158,7 @@ elif menu == "תרגול ומבחנים":
     st.header("📝 תרגול ומבחנים")
     
     if not st.session_state.user_info:
-        st.error("יש להזין פרטי משתמש בתפריט הצד כדי להתחיל מבחן.")
+        st.error("יש להזין פרטי משתמש וללחוץ על אישור בתפריט הצד כדי להתחיל מבחן.")
     else:
         # הגדרות מבחן
         col1, col2 = st.columns(2)
@@ -120,7 +168,7 @@ elif menu == "תרגול ומבחנים":
             num_questions = st.slider("מספר שאלות:", 1, 10, 5)
         
         if st.button("התחל מבחן"):
-            st.session_state.current_quiz = st.session_state.questions_db # כאן תהיה לוגיקה של סינון וערבוב
+            st.session_state.current_quiz = st.session_state.questions_db
             st.session_state.quiz_started = True
             st.rerun()
 
@@ -130,7 +178,6 @@ elif menu == "תרגול ומבחנים":
             score = 0
             for idx, q in enumerate(st.session_state.current_quiz):
                 st.subheader(f"שאלה {idx+1}: {q['question']}")
-                # ערבוב תשובות (ויזואלי בלבד כרגע)
                 user_ans = st.radio(f"בחר תשובה לשאלה {idx+1}", q['options'], key=f"q_{idx}")
                 
                 if st.checkbox(f"הצג תשובה והסבר לשאלה {idx+1}", key=f"chk_{idx}"):
@@ -141,14 +188,13 @@ elif menu == "תרגול ומבחנים":
                     st.info(f"📖 **הסבר:** {q['explanation']}")
             
             if st.button("סיים מבחן ושמור ציון"):
-                save_score(st.session_state.user_info, 100, quiz_topic) # כרגע ציון דמי
+                save_score(st.session_state.user_info, 100, quiz_topic)
                 st.balloons()
                 st.success("הציון נשמר בהצלחה! בדוק את טבלת המובילים.")
 
 elif menu == "סימולציות (תרחישים)":
     st.header("🚑 סימולציה מתגלגלת")
-    st.warning("מודול זה בפיתוח. כאן יוצג תרחיש דינמי (למשל: ילד מגיע למיון עם סטרידור...).")
-    # כאן נבנה מכונת מצבים (State Machine)
+    st.warning("מודול זה בפיתוח...")
 
 elif menu == "טבלת המובילים 🏆":
     st.header("🏆 טבלת האלופים בטיפול נמרץ")
@@ -156,13 +202,11 @@ elif menu == "טבלת המובילים 🏆":
     if 'leaderboard' in st.session_state and st.session_state.leaderboard:
         df = pd.DataFrame(st.session_state.leaderboard)
         
-        # סינון לפי קבוצות
         filter_mode = st.radio("הצג לפי:", ["אישי", "מחלקה/בית חולים"], horizontal=True)
         
         if filter_mode == "אישי":
             st.dataframe(df, use_container_width=True)
         else:
-            # קיבוץ לפי בית חולים וחישוב ממוצע
             grouped = df.groupby("בית חולים")["ציון"].mean().reset_index().sort_values("ציון", ascending=False)
             st.bar_chart(grouped, x="בית חולים", y="ציון")
     else:
@@ -180,16 +224,18 @@ elif menu == "ניהול":
         
         with tab1:
             st.subheader("הוספת שאלה חדשה למאגר")
-            new_q_topic = st.text_input("נושא")
-            new_q_text = st.text_area("תוכן השאלה")
-            new_q_correct = st.text_input("התשובה הנכונה")
-            new_q_distractor1 = st.text_input("מסיח 1")
-            new_q_distractor2 = st.text_input("מסיח 2")
-            new_q_distractor3 = st.text_input("מסיח 3")
-            new_q_explanation = st.text_area("הסבר לתשובה")
-            
-            if st.button("שמור שאלה"):
-                st.success("השאלה נוספה למאגר (כרגע מקומית)")
+            with st.form("add_question_form"):
+                new_q_topic = st.text_input("נושא")
+                new_q_text = st.text_area("תוכן השאלה")
+                new_q_correct = st.text_input("התשובה הנכונה")
+                new_q_distractor1 = st.text_input("מסיח 1")
+                new_q_distractor2 = st.text_input("מסיח 2")
+                new_q_distractor3 = st.text_input("מסיח 3")
+                new_q_explanation = st.text_area("הסבר לתשובה")
+                
+                submitted_q = st.form_submit_button("שמור שאלה")
+                if submitted_q:
+                    st.success("השאלה נוספה למאגר (כרגע מקומית)")
                 
         with tab2:
             st.file_uploader("העלה קבצי תוכן (PDF/Word)", accept_multiple_files=True)
