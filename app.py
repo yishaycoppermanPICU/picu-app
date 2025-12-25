@@ -343,6 +343,14 @@ MEDICAL_DB = {
         }
     }
 }
+# מיזוג מאגרי התוכן למבנה אחיד
+FULL_DB = {**MEDICAL_DB}
+if 'DRUGS_DB' in globals():
+    FULL_DB["💊 תרופות ופרמקולוגיה"] = {
+        "icon": "💊",
+        "description": "מאגר תרופות ופרמקולוגיה.",
+        "topics": DRUGS_DB
+    }
 # ==============================================================================
 # חלק 5: מאגר שאלות + מחשבונים
 # ==============================================================================
@@ -479,7 +487,7 @@ elif st.session_state.page == "learn":
     st.title("ספרייה מקצועית")
     # מיזוג שני ה-DB
     cats = list(FULL_DB.keys())
-    if 'DRUGS_DB' in globals(): cats.append("💊 תרופות ופרמקולוגיה") # אם השתמשנו בזה בנפרד
+    if 'DRUGS_DB' in globals() and "💊 תרופות ופרמקולוגיה" not in cats: cats.append("💊 תרופות ופרמקולוגיה") # אם השתמשנו בזה בנפרד
     
     idx = 0
     if st.session_state.get('cat_filter') in cats: idx = cats.index(st.session_state.cat_filter)
@@ -487,8 +495,8 @@ elif st.session_state.page == "learn":
     
     # בדיקה איפה הדאטה נמצא
     data_source = FULL_DB
-    if cat == "💊 תרופות ופרמקולוגיה" and 'DRUGS_DB' in globals():
-        data_source = {"💊 תרופות ופרמקולוגיה": DRUGS_DB["💊 תרופות ופרמקולוגיה"]} # תיקון למיזוג
+    if cat == "💊 תרופות ופרמקולוגיה" and cat in FULL_DB:
+        data_source = {cat: FULL_DB[cat]} # תיקון למיזוג
     
     if "תרופות" in cat:
         drugs = sorted(data_source[cat]['topics'].keys())
@@ -580,5 +588,22 @@ elif st.session_state.page == "quiz":
 
 elif st.session_state.page == "admin":
     st.title("ניהול")
-    st.info("כאן יהיה עורך התוכן.")
+    st.info("ניתן להדביק כאן טקסט או להעלות קובץ תוכן (txt/md) ואסדר אותו בדף בהתאם.")
+    uploaded = st.file_uploader("העלה קובץ טקסט/Markdown", type=["txt", "md"])
+    pasted = st.text_area("או הדבק כאן טקסט חופשי")
     
+    file_content = ""
+    if uploaded:
+        file_content = uploaded.getvalue().decode("utf-8", errors="ignore")
+    
+    if st.button("טען לתצוגה"):
+        content = pasted.strip() or file_content
+        if content:
+            st.session_state["admin_preview"] = content
+            st.success("קיבלתי את התוכן. תצוגה מקדימה מופיעה למטה.")
+        else:
+            st.warning("יש להדביק טקסט או לבחור קובץ.")
+    
+    if st.session_state.get("admin_preview"):
+        st.subheader("תצוגה מקדימה")
+        st.markdown(render_clean_html(st.session_state["admin_preview"]), unsafe_allow_html=True)
