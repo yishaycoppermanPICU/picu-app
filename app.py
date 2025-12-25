@@ -631,5 +631,17 @@ elif st.session_state.page == "quiz":
 
 elif st.session_state.page == "admin":
     st.title("ניהול")
-    st.info("כאן יהיה עורך התוכן.")
+    st.warning("הדבקת תוכן זמינה לתצוגה בלבד (אין שמירה תמידית).")
+    raw_text = st.text_area("הדביקו כאן תוכן לעיבוד ותרחישים", height=300)
+    c1, c2 = st.columns(2)
+    if c1.button("תצוגה מקדימה"):
+        st.session_state.admin_preview = raw_text
+    if c2.button("נקה"):
+        st.session_state.pop('admin_preview', None)
+        raw_text = ""
+    preview = st.session_state.get('admin_preview') if 'admin_preview' in st.session_state else raw_text
+    if preview:
+        st.markdown("<div class='content-box'>", unsafe_allow_html=True)
+        st.markdown(render_clean_html(preview), unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
     
