@@ -86,7 +86,7 @@ def build_auth_url(client_id, redirect_uri, state=None):
     if state:
         params['state'] = state
     # build query safely
-    qs = '&'.join([f"{k}={requests.utils.quote(str(v), safe='')" for k, v in params.items()])
+    qs = '&'.join([f"{k}={requests.utils.quote(str(v), safe='')}" for k, v in params.items()])
     return f"{base}?{qs}"
 
 # Verify id_token using Google's tokeninfo endpoint
@@ -317,7 +317,7 @@ if 'code' in query_params:
                         else:
                             st.error('שגיאה בשמירת המשתמש במסד הנתונים.')
                     else:
-                        st.error('אימות ה-id_token נכשל או לא התקבל מידע משתמש תקין.')
+                        st.error('אימות ה'id_token נכשל או לא התקבל מידע משתמש תקין.')
                 else:
                     # show helpful error (do not leak client_secret)
                     try:
