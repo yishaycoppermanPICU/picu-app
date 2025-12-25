@@ -344,6 +344,16 @@ MEDICAL_DB = {
     }
 }
 # ==============================================================================
+# חלק 4: מיזוג מאגר מרכזי (FULL_DB)
+# ==============================================================================
+PHARMA_CATEGORY = {
+    "icon": "💊",
+    "description": "מינונים, פרמקולוגיה ודגשים בטיחותיים.",
+    "topics": DRUGS_DB
+}
+
+FULL_DB = {"💊 תרופות ופרמקולוגיה": PHARMA_CATEGORY, **MEDICAL_DB}
+# ==============================================================================
 # חלק 5: מאגר שאלות + מחשבונים
 # ==============================================================================
 
@@ -370,6 +380,16 @@ def calc_ett(age):
 
 def calc_glucose(weight):
     return f"בולוס D10W (2-5 מ\"ל/ק\"ג): {weight*2} - {weight*5} מ\"ל."
+
+def calc_maintenance(weight):
+    if weight <= 10:
+        hourly = weight * 4
+    elif weight <= 20:
+        hourly = 40 + (weight - 10) * 2
+    else:
+        hourly = 60 + (weight - 20) * 1
+    daily = hourly * 24
+    return f"נוזלי אחזקה: {hourly:.1f} מ\"ל/שעה (סה\"כ {daily:.0f} מ\"ל/יום) לפי כלל 4-2-1."
     # ==============================================================================
 # חלק 6: מנוע סימולטור
 # ==============================================================================
@@ -477,19 +497,12 @@ if st.session_state.page == "home":
 
 elif st.session_state.page == "learn":
     st.title("ספרייה מקצועית")
-    # מיזוג שני ה-DB
     cats = list(FULL_DB.keys())
-    if 'DRUGS_DB' in globals(): cats.append("💊 תרופות ופרמקולוגיה") # אם השתמשנו בזה בנפרד
-    
     idx = 0
     if st.session_state.get('cat_filter') in cats: idx = cats.index(st.session_state.cat_filter)
     cat = st.selectbox("תחום:", cats, index=idx)
-    
-    # בדיקה איפה הדאטה נמצא
     data_source = FULL_DB
-    if cat == "💊 תרופות ופרמקולוגיה" and 'DRUGS_DB' in globals():
-        data_source = {"💊 תרופות ופרמקולוגיה": DRUGS_DB["💊 תרופות ופרמקולוגיה"]} # תיקון למיזוג
-    
+
     if "תרופות" in cat:
         drugs = sorted(data_source[cat]['topics'].keys())
         choice = st.selectbox("בחר תרופה (א-ת):", drugs)
@@ -501,6 +514,9 @@ elif st.session_state.page == "learn":
             icon = "✅" if t in st.session_state.completed else "⭕"
             if cols[i%3].button(f"{icon} {t}"): st.session_state.curr_topic = t
         choice = st.session_state.get('curr_topic', topics[0])
+        if choice not in topics:
+            choice = topics[0]
+            st.session_state.curr_topic = choice
         data = data_source[cat]['topics'][choice]
         
     st.markdown("<div class='content-box'>", unsafe_allow_html=True)
@@ -511,7 +527,7 @@ elif st.session_state.page == "learn":
 
 elif st.session_state.page == "calc":
     st.title("מחשבונים")
-    t1, t2, t3 = st.tabs(["כוויות", "טובוס", "גלוקוז"])
+    t1, t2, t3, t4 = st.tabs(["כוויות", "טובוס", "גלוקוז", "נוזלי אחזקה"])
     with t1:
         w = st.number_input("משקל (ק\"ג)", 3.0, 100.0, 10.0)
         bsa = st.number_input("% כוויה", 1.0, 100.0, 10.0)
@@ -522,11 +538,25 @@ elif st.session_state.page == "calc":
     with t3:
         w2 = st.number_input("משקל", 3.0, 100.0, 10.0, key="g")
         st.warning(calc_glucose(w2))
+    with t4:
+        w3 = st.number_input("משקל לילד/תינוק", 2.0, 120.0, 20.0, key="m")
+        st.success(calc_maintenance(w3))
 
 elif st.session_state.page == "sim":
     st.title("סימולטור")
     s = st.session_state.sim
-    if st.button("התחל מחדש"): s.reset(); st.rerun()
+    if st.button("התחל מחדש"):
+        s.reset()
+        st.session_state.pop('last_feedback', None)
+        st.rerun()
+    
+    fb = st.session_state.pop('last_feedback', None)
+    if fb:
+        msg, delta = fb
+        if delta >= 10: st.success(msg)
+        elif delta >= 0: st.info(msg)
+        elif delta <= -30: st.error(msg)
+        else: st.warning(msg)
     
     if s.step < len(s.data):
         d = s.data[s.step]
@@ -543,8 +573,12 @@ elif st.session_state.page == "sim":
             if cols[i%2].button(opt[0], key=f"o{s.step}{i}"):
                 s.score += opt[1]
                 s.log.append(f"שלב {s.step+1}: {opt[2]}")
-                if opt[1] <= -30: s.dead = True
-                s.step += 1
+                st.session_state.last_feedback = (opt[2], opt[1])
+                if opt[1] <= -30:
+                    s.dead = True
+                    s.step = len(s.data)
+                else:
+                    s.step += 1
                 st.rerun()
     else:
         if s.dead: st.error("💀 המטופל קרס.")
